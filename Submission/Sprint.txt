@@ -1,0 +1,11 @@
+Sprint Backlog for POC 2:
+https://docs.google.com/spreadsheets/d/1xajQCD7PrS1P-qhJv8KfPC-H8A784-vWnpCyaLm6tps/edit?gid=1574534028#gid=1574534028
+
+Updated Product Backlog for POC 2:
+https://docs.google.com/spreadsheets/d/1DNPEVU-5QJ2NElWuxMd3hTCgEEz66HKG4Lk-7loAl6k/edit?gid=687379888#gid=687379888
+
+Sprint review: POC 1
+- Successfully implemented the functionalities with a capsule: WASD, jump, grab, swing, and release rope.
+- The monkey model was hard to finish because it doesn't come with animations. Will develop in sprint 2.
+- For POC 2, planning to implement the banana gun feature that will be a major part of the game.
+Overall, the development of mechanisms is on track. I'm a little behind on developing models, but I will try to catch up in the second POC!
