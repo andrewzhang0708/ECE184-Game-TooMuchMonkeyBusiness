@@ -39,6 +39,16 @@ public class PlayerController2D : MonoBehaviour
             return;
         }
 
+        if (keyboard.eKey.wasPressedThisFrame && HorizontalBarSwing2D.TryGrabClosest(rb, out _))
+        {
+            return;
+        }
+
+        if (keyboard.eKey.wasPressedThisFrame && TrampolineRope2D.TryGrabClosest(rb, out _))
+        {
+            return;
+        }
+
         CheckGround();
 
         if (keyboard.wKey.wasPressedThisFrame && isGrounded)
@@ -71,6 +81,8 @@ public class PlayerController2D : MonoBehaviour
 
         if (keyboard.aKey.isPressed)
         {
+            // Debug.Log("A key is pressed");
+            // Debug.Log("Horizontal before: " + horizontal);
             horizontal -= 1f;
         }
 
