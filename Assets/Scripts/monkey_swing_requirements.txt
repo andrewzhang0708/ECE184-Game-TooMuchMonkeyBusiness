@@ -1,0 +1,600 @@
+Monkey Swing Prototype Sync Requirements
+=======================================
+
+Goal
+----
+Implement and synchronize the monkey swinging system for a Unity 6 prototype. The intended gameplay is:
+
+- The monkey can hang from a fixed point / rope anchor.
+- While hanging, pressing A and D changes the monkey's lower-body pose.
+- A/D should also apply an instantaneous swing impulse, so the monkey gains momentum around the hang point.
+- The motion should feel like the monkey is pumping its body to swing, not like a rocket or constant thrust.
+- The visible monkey mesh should follow the physics body, while waist/legs animate procedurally.
+- Physics proxy capsules may be hidden once working.
+
+High-Level Architecture
+-----------------------
+Use a hybrid system:
+
+1. Physics proxy controls real movement.
+2. Visible monkey model follows the proxy.
+3. Lower-body bones are procedurally posed from input.
+4. A/D key presses apply instantaneous tangent impulse around the hang anchor.
+
+Target Hierarchy
+----------------
+Recommended scene hierarchy:
+
+Player2
+├── BodyCapsule
+│   ├── Rigidbody
+│   ├── CapsuleCollider
+│   ├── HingeJoint
+│   └── SwingPumpAroundAnchor.cs
+│
+├── MonkeyVisual
+│   └── 11_Bryan_Chimp
+│       └── rig / bones
+│           ├── pelvis_J
+│           ├── waist_J
+│           ├── L_hip_J
+│           ├── R_hip_J
+│           ├── L_knee_J
+│           └── R_knee_J
+│
+├── MonkeyFollowCapsule.cs
+└── MonkeyLowerBodyPose.cs
+
+Scene-level hang point:
+
+HangPoint
+└── AnchorBody
+    └── Rigidbody, kinematic, no gravity
+
+Important: The visible monkey model should not directly drive physics. The physics proxy drives movement, and the monkey mesh follows it.
+
+Physics Setup
+-------------
+AnchorBody:
+- Rigidbody required.
+- Use Gravity: false.
+- Is Kinematic: true.
+- This is the fixed hang point.
+
+BodyCapsule:
+- Rigidbody required.
+- CapsuleCollider required.
+- HingeJoint required.
+- Connected Body: AnchorBody Rigidbody.
+- Use Spring: false for the main hanging joint, unless deliberately adding joint stiffness.
+- Use Motor: false.
+- Use Limits: false if full circular rotation is allowed.
+- Recommended Hinge Axis for side-view XY swing:
+  Axis = (0, 0, 1)
+- Recommended Hinge Anchor:
+  Anchor = (0, 0.8, 0), tune based on capsule size.
+  Connected Anchor = (0, 0, 0)
+- Disable Auto Configure Connected Anchor if needed.
+
+Rigidbody constraints for side-view XY swing:
+- Freeze Position Z: true.
+- Freeze Rotation X: true.
+- Freeze Rotation Y: true.
+- Freeze Rotation Z: false.
+
+Rigidbody quality settings:
+- Interpolation: Interpolate.
+- Collision Detection: Continuous or Continuous Dynamic.
+- Mass: around 1.5 to 2.
+
+Collision Notes
+---------------
+If physics capsules jitter violently, likely causes are collider/joint conflicts.
+
+Please ensure:
+- Physics proxy parts do not collide with each other.
+- HingeJoint Enable Collision should be false.
+- Consider adding all monkey physics proxy objects to a layer named MonkeyPhysics.
+- Disable MonkeyPhysics vs MonkeyPhysics collision in Project Settings > Physics > Layer Collision Matrix.
+- Ensure no script directly sets transform.position or transform.rotation on Rigidbody/HingeJoint objects every frame.
+- MonkeyFollowCapsule must only move MonkeyVisual, not BodyCapsule or Lg/SwingPart.
+
+Scripts Needed
+==============
+
+1. MonkeyFollowCapsule.cs
+------------------------
+Purpose:
+- Make MonkeyVisual follow BodyCapsule.
+- It should support following position and optionally rotation.
+- For the current prototype, follow position should be on; follow rotation should usually be off so lower-body posing remains visible.
+
+Required fields:
+- Transform targetCapsule
+- Transform monkeyVisual
+- Vector3 positionOffset
+- Vector3 rotationOffsetEuler
+- bool followPosition = true
+- bool followRotation = false
+- bool smoothFollow
+- float positionSmooth
+- float rotationSmooth
+
+Behavior:
+- In LateUpdate, copy or smooth-follow targetCapsule.position to monkeyVisual.position.
+- If followRotation is true, copy or smooth-follow targetCapsule.rotation * rotationOffset.
+- Do not touch any physics Rigidbody transform.
+
+Reference implementation:
+
+using UnityEngine;
+
+public class MonkeyFollowCapsule : MonoBehaviour
+{
+    [Header("Follow Target")]
+    public Transform targetCapsule;
+
+    [Header("Visual Root")]
+    public Transform monkeyVisual;
+
+    [Header("Offset")]
+    public Vector3 positionOffset = Vector3.zero;
+    public Vector3 rotationOffsetEuler = Vector3.zero;
+
+    [Header("Follow Options")]
+    public bool followPosition = true;
+    public bool followRotation = false;
+
+    [Header("Smoothing")]
+    public bool smoothFollow = false;
+    public float positionSmooth = 20f;
+    public float rotationSmooth = 20f;
+
+    void LateUpdate()
+    {
+        if (targetCapsule == null || monkeyVisual == null) return;
+
+        Vector3 targetPos = targetCapsule.position + targetCapsule.TransformDirection(positionOffset);
+        Quaternion targetRot = targetCapsule.rotation * Quaternion.Euler(rotationOffsetEuler);
+
+        if (smoothFollow)
+        {
+            if (followPosition)
+            {
+                monkeyVisual.position = Vector3.Lerp(monkeyVisual.position, targetPos, Time.deltaTime * positionSmooth);
+            }
+
+            if (followRotation)
+            {
+                monkeyVisual.rotation = Quaternion.Slerp(monkeyVisual.rotation, targetRot, Time.deltaTime * rotationSmooth);
+            }
+        }
+        else
+        {
+            if (followPosition)
+            {
+                monkeyVisual.position = targetPos;
+            }
+
+            if (followRotation)
+            {
+                monkeyVisual.rotation = targetRot;
+            }
+        }
+    }
+}
+
+
+2. MonkeyLowerBodyPose.cs
+-------------------------
+Purpose:
+- Procedurally pose the monkey's waist and legs from A/D input.
+- A should represent backward stretch.
+- D should represent forward tuck.
+- This is visual animation only. Do not use Rigidbody or HingeJoint on the monkey bones.
+
+Required fields:
+- Transform pelvis
+- Transform waist
+- Transform leftHip
+- Transform rightHip
+- Transform leftKnee
+- Transform rightKnee
+- bool useKeyboardInput = true
+- float debugPose, range -1 to 1
+- float poseBlendSpeed
+- enum RotationAxis { X, Y, Z }
+- angle fields for stretch/tuck poses
+
+Behavior:
+- Store all default localRotations in Start.
+- In LateUpdate, read New Input System Keyboard.current:
+  A pressed => target pose = -1
+  D pressed => target pose = 1
+  neither => target pose = 0
+- Smooth currentPose toward target pose.
+- Apply localRotation = defaultRotation * axisRotation(angle).
+- Use LateUpdate so this can run after Animator if needed.
+- If Animator overrides bones, disable the Animator for now.
+
+Reference implementation:
+
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+public class MonkeyLowerBodyPose : MonoBehaviour
+{
+    [Header("Lower Body Bones")]
+    public Transform pelvis;
+    public Transform waist;
+    public Transform leftHip;
+    public Transform rightHip;
+    public Transform leftKnee;
+    public Transform rightKnee;
+
+    [Header("Pose Strength")]
+    [Tooltip("-1 = A / stretch backward, 0 = neutral, 1 = D / tuck forward")]
+    [Range(-1f, 1f)]
+    public float debugPose = 0f;
+
+    public bool useKeyboardInput = true;
+    public float poseBlendSpeed = 8f;
+
+    [Header("Axis Selection")]
+    public RotationAxis rotationAxis = RotationAxis.X;
+
+    [Header("Waist / Pelvis Angles")]
+    public float waistStretchAngle = -20f;
+    public float waistTuckAngle = 25f;
+    public float pelvisStretchAngle = -10f;
+    public float pelvisTuckAngle = 15f;
+
+    [Header("Hip Angles")]
+    public float hipStretchAngle = -35f;
+    public float hipTuckAngle = 55f;
+
+    [Header("Knee Angles")]
+    public float kneeStretchAngle = 10f;
+    public float kneeTuckAngle = 65f;
+
+    private float currentPose = 0f;
+
+    private Quaternion pelvisDefault;
+    private Quaternion waistDefault;
+    private Quaternion leftHipDefault;
+    private Quaternion rightHipDefault;
+    private Quaternion leftKneeDefault;
+    private Quaternion rightKneeDefault;
+
+    public enum RotationAxis
+    {
+        X,
+        Y,
+        Z
+    }
+
+    void Start()
+    {
+        if (pelvis != null) pelvisDefault = pelvis.localRotation;
+        if (waist != null) waistDefault = waist.localRotation;
+        if (leftHip != null) leftHipDefault = leftHip.localRotation;
+        if (rightHip != null) rightHipDefault = rightHip.localRotation;
+        if (leftKnee != null) leftKneeDefault = leftKnee.localRotation;
+        if (rightKnee != null) rightKneeDefault = rightKnee.localRotation;
+    }
+
+    void LateUpdate()
+    {
+        float targetPose = debugPose;
+
+        if (useKeyboardInput)
+        {
+            targetPose = 0f;
+
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.aKey.isPressed)
+                {
+                    targetPose = -1f;
+                }
+                else if (Keyboard.current.dKey.isPressed)
+                {
+                    targetPose = 1f;
+                }
+            }
+        }
+
+        currentPose = Mathf.MoveTowards(currentPose, targetPose, poseBlendSpeed * Time.deltaTime);
+        ApplyPose(currentPose);
+    }
+
+    void ApplyPose(float pose)
+    {
+        float waistAngle = GetAngle(pose, waistStretchAngle, waistTuckAngle);
+        float pelvisAngle = GetAngle(pose, pelvisStretchAngle, pelvisTuckAngle);
+        float hipAngle = GetAngle(pose, hipStretchAngle, hipTuckAngle);
+        float kneeAngle = GetAngle(pose, kneeStretchAngle, kneeTuckAngle);
+
+        if (waist != null) waist.localRotation = waistDefault * AxisRotation(waistAngle);
+        if (pelvis != null) pelvis.localRotation = pelvisDefault * AxisRotation(pelvisAngle);
+        if (leftHip != null) leftHip.localRotation = leftHipDefault * AxisRotation(hipAngle);
+        if (rightHip != null) rightHip.localRotation = rightHipDefault * AxisRotation(hipAngle);
+        if (leftKnee != null) leftKnee.localRotation = leftKneeDefault * AxisRotation(kneeAngle);
+        if (rightKnee != null) rightKnee.localRotation = rightKneeDefault * AxisRotation(kneeAngle);
+    }
+
+    float GetAngle(float pose, float stretchAngle, float tuckAngle)
+    {
+        if (pose < 0f) return Mathf.Lerp(0f, stretchAngle, -pose);
+        return Mathf.Lerp(0f, tuckAngle, pose);
+    }
+
+    Quaternion AxisRotation(float angle)
+    {
+        switch (rotationAxis)
+        {
+            case RotationAxis.X:
+                return Quaternion.Euler(angle, 0f, 0f);
+            case RotationAxis.Y:
+                return Quaternion.Euler(0f, angle, 0f);
+            case RotationAxis.Z:
+                return Quaternion.Euler(0f, 0f, angle);
+            default:
+                return Quaternion.identity;
+        }
+    }
+}
+
+
+3. SwingPumpAroundAnchor.cs
+---------------------------
+Purpose:
+- On the instant A or D is pressed, apply a tangent impulse to BodyCapsule around the hang point.
+- Do not apply continuous thrust while held.
+- This should feel like a body-pump impulse.
+
+Required fields:
+- Rigidbody bodyRb
+- Transform hangAnchor
+- SwingPlane swingPlane, default XY
+- float pumpImpulse
+- float cooldown
+- float maxSpeed
+- bool useInputDirection
+
+Behavior:
+- Use New Input System.
+- In Update, detect wasPressedThisFrame for A/D and queue a pump direction.
+- In FixedUpdate, apply the queued impulse along tangent direction.
+- Limit max speed.
+- useInputDirection true means A/D map to opposite tangent directions.
+- useInputDirection false means each press pushes along current movement direction, more like swing pumping.
+
+Reference implementation:
+
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+public class SwingPumpAroundAnchor : MonoBehaviour
+{
+    public enum SwingPlane
+    {
+        XY,
+        XZ
+    }
+
+    [Header("References")]
+    public Rigidbody bodyRb;
+    public Transform hangAnchor;
+
+    [Header("Swing Plane")]
+    public SwingPlane swingPlane = SwingPlane.XY;
+
+    [Header("Pump")]
+    public float pumpImpulse = 4f;
+    public float cooldown = 0.12f;
+    public float maxSpeed = 18f;
+
+    [Header("Timing Feel")]
+    [Tooltip("On: A and D push opposite tangent directions. Off: each press pushes along current movement direction.")]
+    public bool useInputDirection = true;
+
+    private float nextPumpTime = 0f;
+    private int queuedPumpDirection = 0;
+
+    void Reset()
+    {
+        bodyRb = GetComponent<Rigidbody>();
+    }
+
+    void Update()
+    {
+        if (Keyboard.current == null) return;
+        if (Time.time < nextPumpTime) return;
+
+        if (Keyboard.current.aKey.wasPressedThisFrame)
+        {
+            queuedPumpDirection = -1;
+            nextPumpTime = Time.time + cooldown;
+        }
+        else if (Keyboard.current.dKey.wasPressedThisFrame)
+        {
+            queuedPumpDirection = 1;
+            nextPumpTime = Time.time + cooldown;
+        }
+    }
+
+    void FixedUpdate()
+    {
+        if (bodyRb == null || hangAnchor == null) return;
+
+        if (queuedPumpDirection != 0)
+        {
+            ApplyPump(queuedPumpDirection);
+            queuedPumpDirection = 0;
+        }
+
+        LimitSpeed();
+    }
+
+    void ApplyPump(int inputDirection)
+    {
+        Vector3 tangent = GetTangentDirection(inputDirection);
+        bodyRb.AddForce(tangent * pumpImpulse, ForceMode.Impulse);
+    }
+
+    Vector3 GetTangentDirection(int inputDirection)
+    {
+        Vector3 radial = bodyRb.position - hangAnchor.position;
+
+        if (swingPlane == SwingPlane.XY)
+        {
+            radial.z = 0f;
+
+            if (radial.sqrMagnitude < 0.0001f)
+                return Vector3.right * inputDirection;
+
+            radial.Normalize();
+            Vector3 tangent = Vector3.Cross(Vector3.forward, radial).normalized;
+
+            if (useInputDirection) return tangent * inputDirection;
+            return MatchCurrentVelocityDirection(tangent);
+        }
+        else
+        {
+            radial.y = 0f;
+
+            if (radial.sqrMagnitude < 0.0001f)
+                return Vector3.right * inputDirection;
+
+            radial.Normalize();
+            Vector3 tangent = Vector3.Cross(Vector3.up, radial).normalized;
+
+            if (useInputDirection) return tangent * inputDirection;
+            return MatchCurrentVelocityDirection(tangent);
+        }
+    }
+
+    Vector3 MatchCurrentVelocityDirection(Vector3 tangent)
+    {
+        Vector3 velocity = bodyRb.linearVelocity;
+
+        if (velocity.sqrMagnitude < 0.001f)
+        {
+            return tangent;
+        }
+
+        float dot = Vector3.Dot(velocity.normalized, tangent);
+        return dot >= 0f ? tangent : -tangent;
+    }
+
+    void LimitSpeed()
+    {
+        if (bodyRb.linearVelocity.magnitude > maxSpeed)
+        {
+            bodyRb.linearVelocity = bodyRb.linearVelocity.normalized * maxSpeed;
+        }
+    }
+}
+
+If Unity version does not support Rigidbody.linearVelocity, replace all bodyRb.linearVelocity with bodyRb.velocity.
+
+Inspector Setup Summary
+=======================
+
+MonkeyFollowCapsule, attached to Player2:
+- Target Capsule = BodyCapsule
+- Monkey Visual = MonkeyVisual
+- Follow Position = true
+- Follow Rotation = false
+- Smooth Follow = false
+
+MonkeyLowerBodyPose, attached to MonkeyVisual:
+- Pelvis = pelvis_J
+- Waist = waist_J
+- Left Hip = L_hip_J
+- Right Hip = R_hip_J
+- Left Knee = L_knee_J
+- Right Knee = R_knee_J
+- Use Keyboard Input = true
+- Rotation Axis = tune X/Y/Z
+- Initial recommended angles:
+  Waist Stretch = -15 to -20
+  Waist Tuck = 20 to 25
+  Pelvis Stretch = -8 to -10
+  Pelvis Tuck = 12 to 15
+  Hip Stretch = -30 to -35
+  Hip Tuck = 50 to 60
+  Knee Stretch = 5 to 10
+  Knee Tuck = 60 to 70
+
+SwingPumpAroundAnchor, attached to BodyCapsule:
+- Body Rb = BodyCapsule Rigidbody
+- Hang Anchor = AnchorBody or HangPoint Transform
+- Swing Plane = XY for side-view
+- Pump Impulse = 4 to start
+- Cooldown = 0.12
+- Max Speed = 18
+- Use Input Direction = true to start
+
+Expected Runtime Behavior
+=========================
+
+When the monkey is hanging:
+- A pressed:
+  - Lower body moves toward stretch-back pose.
+  - BodyCapsule receives one tangent impulse.
+- D pressed:
+  - Lower body moves toward tuck-forward pose.
+  - BodyCapsule receives one tangent impulse in the other mapped direction.
+- Holding A or D should not continuously add force.
+- Repeated timed presses should build swing momentum around the hang point.
+
+Debug Checklist
+===============
+
+If the lower capsule or physics proxy jitters:
+- Disable collision between proxy parts.
+- Ensure HingeJoint Enable Collision is off.
+- Reduce spring values on any local proxy joints.
+- Check anchor/connected anchor positions.
+- Ensure no transform-follow script is moving a Rigidbody object.
+- Set Rigidbody interpolation to Interpolate and collision detection to Continuous.
+
+If the monkey visual does not move:
+- Check MonkeyFollowCapsule targetCapsule and monkeyVisual fields.
+- Ensure BodyCapsule is actually moving.
+- Ensure MonkeyVisual is not disabled.
+
+If lower-body pose does not show:
+- Disable Animator temporarily.
+- Check bone references.
+- Try Rotation Axis X, Y, Z.
+- Increase hip/knee angles.
+- Confirm MonkeyLowerBodyPose is running in LateUpdate.
+
+If swing impulse goes the wrong way:
+- Toggle useInputDirection.
+- Swap A/D direction mapping in SwingPumpAroundAnchor.
+- Verify SwingPlane: XY vs XZ.
+
+If the monkey flies too violently:
+- Lower pumpImpulse.
+- Lower maxSpeed.
+- Increase cooldown.
+
+If monkey barely moves:
+- Increase pumpImpulse.
+- Confirm HingeJoint is not locked by limits or frozen rotation.
+- Check that the needed rotation axis is not frozen.
+
+Prototype Priority
+==================
+
+Do not build a full active ragdoll yet. Current goal is only:
+- A stable hanging monkey.
+- Waist/leg procedural pose from A/D.
+- Instantaneous swing impulse on press.
+- Visible monkey follows physics proxy.
+
+This should be enough for the prototype checkpoint.
