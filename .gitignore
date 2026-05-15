@@ -97,3 +97,13 @@ Assets/**/2_BackUpThisFolder_ButDontShipItWithYourGame/
 *.dll.debug
 *.so.debug
 *.dSYM/
+
+# Unity build outputs
+POC_2_Submission/
+Build/
+Builds/
+*.apk
+*.aab
+*.exe
+*_Data/
+*.resS
