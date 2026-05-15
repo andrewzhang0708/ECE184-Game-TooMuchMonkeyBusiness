@@ -97,3 +97,25 @@ Assets/**/2_BackUpThisFolder_ButDontShipItWithYourGame/
 *.dll.debug
 *.so.debug
 *.dSYM/
+
+# Unity build outputs
+POC_2_Submission/
+Build/
+Builds/
+*.apk
+*.aab
+*.exe
+*_Data/
+*.resS
+
+Add-Content .gitignore "`n# Unity build/submission outputs"
+Add-Content .gitignore "PROTO_1_Submission/"
+Add-Content .gitignore "POC_2_Submission/"
+Add-Content .gitignore "Build/"
+Add-Content .gitignore "Builds/"
+Add-Content .gitignore "Windows/"
+Add-Content .gitignore "*_Data/"
+Add-Content .gitignore "*.resS"
+Add-Content .gitignore "*.exe"
+Add-Content .gitignore "*.apk"
+Add-Content .gitignore "*.aab"
