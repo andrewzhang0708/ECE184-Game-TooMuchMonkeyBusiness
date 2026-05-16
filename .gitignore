@@ -98,6 +98,9 @@ Assets/**/2_BackUpThisFolder_ButDontShipItWithYourGame/
 *.so.debug
 *.dSYM/
 
+# Submission folder
+Submission/
+
 # Unity build outputs
 POC_2_Submission/
 Build/
