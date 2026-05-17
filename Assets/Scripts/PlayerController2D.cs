@@ -113,12 +113,12 @@ public class PlayerController2D : MonoBehaviour
 
         if (keyboard.aKey.isPressed)
         {
-            horizontal -= 1f;
+            horizontal -= 2f;
         }
 
         if (keyboard.dKey.isPressed)
         {
-            horizontal += 1f;
+            horizontal += 2f;
         }
 
         Vector3 velocity = rb.linearVelocity;
