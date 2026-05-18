@@ -380,12 +380,12 @@ public class TrampolineRope2D : MonoBehaviour
 
         float input = 0f;
 
-        if (keyboard.aKey.isPressed)
+        if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
         {
             input -= 1f;
         }
 
-        if (keyboard.dKey.isPressed)
+        if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
         {
             input += 1f;
         }
@@ -412,12 +412,12 @@ public class TrampolineRope2D : MonoBehaviour
 
         float input = 0f;
 
-        if (keyboard.wKey.isPressed)
+        if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)
         {
             input -= 1f;
         }
 
-        if (keyboard.sKey.isPressed)
+        if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)
         {
             input += 1f;
         }
