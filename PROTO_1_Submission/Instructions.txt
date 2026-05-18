@@ -1,8 +1,0 @@
-HOW TO PLAY
-
-AD to move around left or right
-W to jump
-
-When you are near a grabable bar or rope, press E to grab onto it. Then, swing 
-using AD to get momentum. Use WS to climb up/down (rope only). E to release and fly 
-to the direction you are swinging.
