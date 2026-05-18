@@ -248,11 +248,22 @@ public class PlayerController2D : MonoBehaviour
 
         for (int i = 0; i < hitCount; i++)
         {
-            if (groundHits[i] != null && !IsOwnCollider(groundHits[i]))
+            Collider hit = groundHits[i];
+
+            if (hit == null || IsOwnCollider(hit))
             {
-                isGrounded = true;
-                return;
+                continue;
             }
+
+            int hitLayer = hit.gameObject.layer;
+            if ((groundLayer.value & (1 << hitLayer)) == 0)
+            {
+                // Hit is not part of the configured groundLayer mask
+                continue;
+            }
+
+            isGrounded = true;
+            return;
         }
     }
 
