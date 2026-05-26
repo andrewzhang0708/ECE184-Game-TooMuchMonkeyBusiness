@@ -23,17 +23,14 @@ public class ChimpMovement : MonoBehaviour
 
     private HingeJoint m_moveJoint;
 
-    private Vector3 m_start;
-
-    private bool m_tryGrabHeld;
-
-    private void StartTryGrab(InputAction.CallbackContext context)
+    private void StartTryGrab()
     {
         m_grabState = GrabState.Trying;
         m_arms.EnableGrabCollider(true);
         m_legs.EnableGrabCollider(true);
     }
-    private void StopTryGrab(InputAction.CallbackContext context)
+
+    private void StopTryGrab()
     {
         m_grabState = GrabState.Free;
         Disconnect();
@@ -59,23 +56,22 @@ public class ChimpMovement : MonoBehaviour
         m_moveJoint = m_legs.GetComponent<HingeJoint>();
         m_arms.EnableGrabCollider(false);
         m_legs.EnableGrabCollider(false);
-        m_start = m_arms.transform.position + 10 * Vector3.up;
     }
 
     private void Update()
     {
-        bool tryGrabNow = IsTryGrabPressed();
-
-        if (tryGrabNow && !m_tryGrabHeld)
+        if (!WasGrabPressedThisFrame())
         {
-            StartTryGrab(default);
-        }
-        else if (!tryGrabNow && m_tryGrabHeld)
-        {
-            StopTryGrab(default);
+            return;
         }
 
-        m_tryGrabHeld = tryGrabNow;
+        if (m_grabState == GrabState.Free)
+        {
+            StartTryGrab();
+            return;
+        }
+
+        StopTryGrab();
     }
 
     private void FixedUpdate()
@@ -127,10 +123,10 @@ public class ChimpMovement : MonoBehaviour
         m_legs.SetAerial();
     }
 
-    private static bool IsTryGrabPressed()
+    private static bool WasGrabPressedThisFrame()
     {
-        return (Keyboard.current != null && Keyboard.current.eKey.isPressed)
-            || (Gamepad.current != null && Gamepad.current.buttonWest.isPressed);
+        return (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
+            || (Gamepad.current != null && Gamepad.current.buttonWest.wasPressedThisFrame);
     }
 
     private static float ReadSwingInput()

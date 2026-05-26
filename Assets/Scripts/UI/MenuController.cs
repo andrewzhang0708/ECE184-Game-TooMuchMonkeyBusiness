@@ -28,6 +28,32 @@ public class MenuController : MonoBehaviour
         SceneManager.LoadScene(sceneName);
     }
 
+    // Public wrappers so UI Buttons can call specific level loads
+    public void StartLevel1()
+    {
+        StartLevel(Scene1Name);
+    }
+
+    public void StartLevel2()
+    {
+        StartLevel(Scene2Name);
+    }
+
+    public void StartLevel3()
+    {
+        StartLevel(Scene3Name);
+    }
+
+    public void StartLevel4()
+    {
+        StartLevel(Scene4Name);
+    }
+
+    public void StartLevel5()
+    {
+        StartLevel(Scene5Name);
+    }
+
     public void Play()
     {
         // SceneManager.LoadScene(levelSelectSceneName);
