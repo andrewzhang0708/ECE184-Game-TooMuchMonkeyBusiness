@@ -41,6 +41,12 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Grass
+    uniqueID: 3903315611
+    locked: 0
+  - name: Soil
+    uniqueID: 2204748001
+    locked: 0
   m_RenderingLayers:
   - Default
   - Light Layer 1

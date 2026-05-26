@@ -1657,10 +1657,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: Branch (1)
       objectReference: {fileID: 0}
-    - target: {fileID: 3455293949217406816, guid: 66376ccc8198e0449ada271051720f69, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 4456110953273167508, guid: 66376ccc8198e0449ada271051720f69, type: 3}
       propertyPath: grabRadius
       value: 4.09
