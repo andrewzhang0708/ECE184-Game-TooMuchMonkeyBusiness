@@ -19,6 +19,8 @@ public class ChimpMovement : MonoBehaviour
     [SerializeField] private float m_hingeForce;
     [SerializeField] private float m_targetVelocity;
     [SerializeField] private bool m_useInternalInput = true;
+    [SerializeField] private LayerMask m_swingableLayers = ~0;
+    [SerializeField] private float m_overlapProbePadding = 0.35f;
 
     private GrabState m_grabState = GrabState.Free;
 
@@ -126,6 +128,8 @@ public class ChimpMovement : MonoBehaviour
         if (m_grabState == GrabState.Free)
         {
             StartTryGrab();
+            Physics.SyncTransforms();
+            TryConnectCurrentOverlaps();
         }
     }
 
@@ -169,11 +173,54 @@ public class ChimpMovement : MonoBehaviour
 
     public void Connect(Swingable swingable, SwingPart swingPart)
     {
-        if (IsConnected()) return;
-        transform.position += swingable.transform.position - swingPart.GetEndPoint();
+        if (IsConnected() || swingable == null || swingPart == null) return;
+
+        Vector3 targetGrabPoint = swingable.GetGrabPoint();
+        targetGrabPoint.z = swingPart.GetEndPoint().z;
+        transform.position += targetGrabPoint - swingPart.GetEndPoint();
         // Physics.SyncTransforms();
         m_grabState = swingPart == m_arms ? GrabState.Arms : GrabState.Legs;
         swingPart.ConnectToSwingable(swingable);
+    }
+
+    private void TryConnectCurrentOverlaps()
+    {
+        if (TryConnectOverlapForPart(m_arms))
+        {
+            return;
+        }
+
+        TryConnectOverlapForPart(m_legs);
+    }
+
+    private bool TryConnectOverlapForPart(SwingPart swingPart)
+    {
+        if (swingPart == null)
+        {
+            return false;
+        }
+
+        Collider[] overlaps = Physics.OverlapSphere(
+            swingPart.GetEndPoint(),
+            swingPart.GetGrabRadius() + m_overlapProbePadding,
+            m_swingableLayers,
+            QueryTriggerInteraction.Collide
+        );
+
+        for (int i = 0; i < overlaps.Length; i++)
+        {
+            Swingable swingable = overlaps[i].GetComponentInParent<Swingable>();
+
+            if (swingable == null)
+            {
+                continue;
+            }
+
+            Connect(swingable, swingPart);
+            return true;
+        }
+
+        return false;
     }
 
     public void Disconnect()

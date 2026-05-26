@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class SwingPart : MonoBehaviour
@@ -16,18 +15,42 @@ public class SwingPart : MonoBehaviour
 
     private void Awake()
     {
-        m_grabCollider = m_end.GetComponent<Collider>();
+        if (m_end == null)
+        {
+            Debug.LogWarning($"{name} SwingPart has no end transform assigned.", this);
+        }
+        else if (!m_end.TryGetComponent(out m_grabCollider))
+        {
+            Debug.LogWarning($"{name} SwingPart end '{m_end.name}' has no Collider.", m_end);
+        }
+
         m_rb = GetComponent<Rigidbody>();
     }
 
     public void EnableGrabCollider(bool grabbing)
     {
+        if (m_grabCollider == null)
+        {
+            return;
+        }
+
         m_grabCollider.enabled = grabbing;
     }
 
     public Vector3 GetEndPoint()
     {
-        return m_end.position;
+        return m_end != null ? m_end.position : transform.position;
+    }
+
+    public float GetGrabRadius()
+    {
+        if (m_grabCollider == null)
+        {
+            return 0.25f;
+        }
+
+        Bounds bounds = m_grabCollider.bounds;
+        return Mathf.Max(bounds.extents.x, bounds.extents.y, bounds.extents.z, 0.25f);
     }
 
     public Vector3 GetDirection()
@@ -43,7 +66,7 @@ public class SwingPart : MonoBehaviour
         }
         m_grabJoint = gameObject.AddComponent<HingeJoint>();
         m_grabJoint.axis = transform.InverseTransformDirection(-Vector3.right);
-        m_grabJoint.anchor = m_end.localPosition;
+        m_grabJoint.anchor = GetLocalEndPoint();
         m_rb.centerOfMass = Vector3.zero;
         m_rb.mass = 1;
         OnConnect?.Invoke();
@@ -51,14 +74,19 @@ public class SwingPart : MonoBehaviour
 
     public void SetBottom()
     {
-        m_rb.centerOfMass = m_end.localPosition;
+        m_rb.centerOfMass = GetLocalEndPoint();
         m_rb.mass = 5;
     }
 
     public void SetAerial()
     {
-        m_rb.centerOfMass = m_end.localPosition;
+        m_rb.centerOfMass = GetLocalEndPoint();
         m_rb.mass = 1;
+    }
+
+    private Vector3 GetLocalEndPoint()
+    {
+        return m_end != null ? m_end.localPosition : Vector3.zero;
     }
 
     public void Disconnect()

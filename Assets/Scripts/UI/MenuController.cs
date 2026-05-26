@@ -8,6 +8,7 @@ public class MenuController : MonoBehaviour
     public GameObject settingsPanel;
     public GameObject creditPanel;
     public GameObject levelPanel;
+    public GameObject introPanel;
 
     [Header("Scenes")]
     // public string levelSelectSceneName = "LevelSelect";
@@ -60,7 +61,17 @@ public class MenuController : MonoBehaviour
         mainMenuPanel.SetActive(false);
         settingsPanel.SetActive(false);
         creditPanel.SetActive(false);
+        levelPanel.SetActive(false);
+        introPanel.SetActive(true);
+    }
+
+    public void StartChooseLevel()
+    {
+        mainMenuPanel.SetActive(false);
+        settingsPanel.SetActive(false);
+        creditPanel.SetActive(false);
         levelPanel.SetActive(true);
+        introPanel.SetActive(false);
     }
 
     public void OpenSettings()
@@ -69,6 +80,7 @@ public class MenuController : MonoBehaviour
         settingsPanel.SetActive(true);
         creditPanel.SetActive(false);
         levelPanel.SetActive(false);
+        introPanel.SetActive(false);
     }
 
     public void OpenCredit()
@@ -77,6 +89,7 @@ public class MenuController : MonoBehaviour
         settingsPanel.SetActive(false);
         creditPanel.SetActive(true);
         levelPanel.SetActive(false);
+        introPanel.SetActive(false);
     }
 
     public void BackToMainMenu()
@@ -85,6 +98,7 @@ public class MenuController : MonoBehaviour
         settingsPanel.SetActive(false);
         creditPanel.SetActive(false);
         levelPanel.SetActive(false);
+        introPanel.SetActive(false);
     }
 
     public void QuitGame()

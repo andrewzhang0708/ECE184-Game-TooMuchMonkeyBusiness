@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(Rigidbody))]
 public class SpimSwingBridge : MonoBehaviour
@@ -9,19 +10,28 @@ public class SpimSwingBridge : MonoBehaviour
     [SerializeField] private Rigidbody playerBody;
     [SerializeField] private GameObject normalVisualRoot;
     [SerializeField] private Animator normalAnimator;
+    [SerializeField] private Transform normalHandGrabPoint;
 
     [Header("Spim Rig")]
     [SerializeField] private ChimpMovement chimpRig;
     [SerializeField] private Transform chimpRigRoot;
     [SerializeField] private GameObject chimpVisualRoot;
+    [SerializeField] private Vector3 rigRotationOffset = new Vector3(0f, 90f, 0f);
 
     [Header("Switching")]
     [SerializeField] private bool hideNormalVisualWhileSwinging = true;
     [SerializeField] private bool hideChimpVisual = true;
     [SerializeField] private bool disableAnimatorWhileSwinging = true;
+    [SerializeField] private float maxGrabDistance = 3.5f;
     [SerializeField] private float failedGrabTimeout = 0.35f;
     [SerializeField] private float releaseVelocityMultiplier = 1f;
 
+    [Header("Debug")]
+    [SerializeField] private bool drawHandDistanceLine = true;
+    [SerializeField] private bool warnIfHighlightedBarHasNoSwingable = true;
+
+    private readonly List<HandSwingBar> highlightedBars = new List<HandSwingBar>();
+    private readonly List<HandSwingBar> barsInRange = new List<HandSwingBar>();
     private bool rigActive;
     private bool connected;
     private float grabAttemptStartedAt;
@@ -30,6 +40,8 @@ public class SpimSwingBridge : MonoBehaviour
     private Transform originalRigParent;
     private Vector3 originalRigLocalPosition;
     private Quaternion originalRigLocalRotation;
+    private Rigidbody[] rigBodies;
+    private RigidbodyConstraints[] originalRigConstraints;
 
     private void Awake()
     {
@@ -58,6 +70,7 @@ public class SpimSwingBridge : MonoBehaviour
             originalRigParent = chimpRigRoot.parent;
             originalRigLocalPosition = chimpRigRoot.localPosition;
             originalRigLocalRotation = chimpRigRoot.localRotation;
+            CacheRigBodies();
         }
 
         if (chimpRig != null)
@@ -71,6 +84,8 @@ public class SpimSwingBridge : MonoBehaviour
 
     private void Update()
     {
+        RefreshBarOutlines();
+
         if (WasGrabPressedThisFrame())
         {
             if (rigActive)
@@ -109,6 +124,8 @@ public class SpimSwingBridge : MonoBehaviour
 
     private void LateUpdate()
     {
+        DrawHandDistanceLine();
+
         if (!rigActive || !connected || chimpRig == null)
         {
             return;
@@ -125,13 +142,18 @@ public class SpimSwingBridge : MonoBehaviour
             return;
         }
 
+        WarnIfClosestBarCannotUseSpim();
+
         rigActive = true;
         connected = false;
         grabAttemptStartedAt = Time.time;
 
         chimpRigRoot.SetParent(null, true);
         chimpRigRoot.position = transform.position;
-        chimpRigRoot.rotation = transform.rotation;
+        Vector3 rigPosition = chimpRigRoot.position;
+        rigPosition.z = transform.position.z;
+        chimpRigRoot.position = rigPosition;
+        chimpRigRoot.rotation = transform.rotation * Quaternion.Euler(rigRotationOffset);
 
         SetRigPhysicsActive(true);
         chimpRig.BeginGrabAttempt();
@@ -148,6 +170,9 @@ public class SpimSwingBridge : MonoBehaviour
         connected = false;
         SetRigPhysicsActive(false);
         RestoreRigParent();
+        ResetRigToPlayer();
+        ClearBarOutlines();
+        SetChimpVisualVisible(!hideChimpVisual);
     }
 
     private void FreezeNormalPlayerForSwing()
@@ -166,6 +191,8 @@ public class SpimSwingBridge : MonoBehaviour
         {
             normalVisualRoot.SetActive(false);
         }
+
+        SetChimpVisualVisible(true);
 
         if (normalAnimator != null && disableAnimatorWhileSwinging)
         {
@@ -210,6 +237,14 @@ public class SpimSwingBridge : MonoBehaviour
         connected = false;
         SetRigPhysicsActive(false);
         RestoreRigParent();
+        ResetRigToPlayer();
+        ClearBarOutlines();
+        SetChimpVisualVisible(!hideChimpVisual);
+    }
+
+    private void OnDisable()
+    {
+        ClearBarOutlines();
     }
 
     private void RestoreRigParent()
@@ -224,6 +259,17 @@ public class SpimSwingBridge : MonoBehaviour
         chimpRigRoot.localRotation = originalRigLocalRotation;
     }
 
+    private void ResetRigToPlayer()
+    {
+        if (chimpRigRoot == null)
+        {
+            return;
+        }
+
+        chimpRigRoot.position = transform.position;
+        chimpRigRoot.rotation = transform.rotation * Quaternion.Euler(rigRotationOffset);
+    }
+
     private void SetRigPhysicsActive(bool active)
     {
         if (chimpRigRoot == null)
@@ -231,16 +277,42 @@ public class SpimSwingBridge : MonoBehaviour
             return;
         }
 
-        Rigidbody[] bodies = chimpRigRoot.GetComponentsInChildren<Rigidbody>(true);
-        for (int i = 0; i < bodies.Length; i++)
+        if (rigBodies == null || rigBodies.Length == 0)
         {
-            bodies[i].detectCollisions = active;
-            bodies[i].isKinematic = !active;
+            CacheRigBodies();
+        }
+
+        for (int i = 0; i < rigBodies.Length; i++)
+        {
+            Rigidbody body = rigBodies[i];
+
+            if (body == null)
+            {
+                continue;
+            }
 
             if (!active)
             {
-                bodies[i].linearVelocity = Vector3.zero;
-                bodies[i].angularVelocity = Vector3.zero;
+                body.linearVelocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+            }
+
+            body.detectCollisions = active;
+            body.isKinematic = !active;
+
+            if (active)
+            {
+                body.constraints = RigidbodyConstraints.FreezePositionZ
+                    | RigidbodyConstraints.FreezeRotationX
+                    | RigidbodyConstraints.FreezeRotationY;
+
+                Vector3 position = body.position;
+                position.z = transform.position.z;
+                body.position = position;
+            }
+            else if (originalRigConstraints != null && i < originalRigConstraints.Length)
+            {
+                body.constraints = originalRigConstraints[i];
             }
         }
 
@@ -248,6 +320,26 @@ public class SpimSwingBridge : MonoBehaviour
         for (int i = 0; i < colliders.Length; i++)
         {
             colliders[i].enabled = active;
+        }
+    }
+
+    private void CacheRigBodies()
+    {
+        if (chimpRigRoot == null)
+        {
+            rigBodies = new Rigidbody[0];
+            originalRigConstraints = new RigidbodyConstraints[0];
+            return;
+        }
+
+        rigBodies = chimpRigRoot.GetComponentsInChildren<Rigidbody>(true);
+        originalRigConstraints = new RigidbodyConstraints[rigBodies.Length];
+
+        for (int i = 0; i < rigBodies.Length; i++)
+        {
+            originalRigConstraints[i] = rigBodies[i] != null
+                ? rigBodies[i].constraints
+                : RigidbodyConstraints.None;
         }
     }
 
@@ -263,6 +355,168 @@ public class SpimSwingBridge : MonoBehaviour
         {
             renderers[i].enabled = visible;
         }
+    }
+
+    private void RefreshBarOutlines()
+    {
+        if (rigActive)
+        {
+            ClearBarOutlines();
+            return;
+        }
+
+        Vector3 grabPoint = GetNormalHandPosition();
+        float maxDistanceSqr = maxGrabDistance * maxGrabDistance;
+        IReadOnlyList<HandSwingBar> activeBars = HandSwingBar.Bars;
+
+        barsInRange.Clear();
+
+        for (int i = 0; i < activeBars.Count; i++)
+        {
+            HandSwingBar bar = activeBars[i];
+
+            if (bar == null || GetPlanarDistanceSqr(grabPoint, bar.GrabPoint) > maxDistanceSqr)
+            {
+                continue;
+            }
+
+            barsInRange.Add(bar);
+        }
+
+        for (int i = highlightedBars.Count - 1; i >= 0; i--)
+        {
+            HandSwingBar bar = highlightedBars[i];
+
+            if (bar == null || !barsInRange.Contains(bar))
+            {
+                if (bar != null)
+                {
+                    bar.SetHighlighted(false);
+                }
+
+                highlightedBars.RemoveAt(i);
+            }
+        }
+
+        for (int i = 0; i < barsInRange.Count; i++)
+        {
+            HandSwingBar bar = barsInRange[i];
+
+            if (highlightedBars.Contains(bar))
+            {
+                continue;
+            }
+
+            bar.SetHighlighted(true);
+            highlightedBars.Add(bar);
+        }
+    }
+
+    private void ClearBarOutlines()
+    {
+        for (int i = highlightedBars.Count - 1; i >= 0; i--)
+        {
+            HandSwingBar bar = highlightedBars[i];
+
+            if (bar != null)
+            {
+                bar.SetHighlighted(false);
+            }
+        }
+
+        highlightedBars.Clear();
+    }
+
+    private void DrawHandDistanceLine()
+    {
+        if (!drawHandDistanceLine || rigActive)
+        {
+            return;
+        }
+
+        HandSwingBar closestBar = FindClosestHandSwingBar();
+
+        if (closestBar == null)
+        {
+            return;
+        }
+
+        Vector3 grabPoint = GetNormalHandPosition();
+        float distanceSqr = GetPlanarDistanceSqr(grabPoint, closestBar.GrabPoint);
+        Color lineColor = distanceSqr <= maxGrabDistance * maxGrabDistance ? Color.green : Color.red;
+        Vector3 barPoint = closestBar.GrabPoint;
+        barPoint.z = grabPoint.z;
+        Debug.DrawLine(grabPoint, barPoint, lineColor);
+    }
+
+    private void WarnIfClosestBarCannotUseSpim()
+    {
+        if (!warnIfHighlightedBarHasNoSwingable)
+        {
+            return;
+        }
+
+        HandSwingBar closestBar = FindClosestHandSwingBar();
+
+        if (closestBar == null)
+        {
+            return;
+        }
+
+        float distanceSqr = GetPlanarDistanceSqr(GetNormalHandPosition(), closestBar.GrabPoint);
+
+        if (distanceSqr > maxGrabDistance * maxGrabDistance)
+        {
+            return;
+        }
+
+        if (closestBar.GetComponentInParent<Swingable>() == null)
+        {
+            Debug.LogWarning(
+                "Closest highlighted bar has HandSwingBar but no Swingable. Spim rig needs Swingable on the bar to actually connect.",
+                closestBar
+            );
+        }
+    }
+
+    private HandSwingBar FindClosestHandSwingBar()
+    {
+        Vector3 grabPoint = GetNormalHandPosition();
+        HandSwingBar closestBar = null;
+        float closestDistanceSqr = float.PositiveInfinity;
+        IReadOnlyList<HandSwingBar> activeBars = HandSwingBar.Bars;
+
+        for (int i = 0; i < activeBars.Count; i++)
+        {
+            HandSwingBar bar = activeBars[i];
+
+            if (bar == null)
+            {
+                continue;
+            }
+
+            float distanceSqr = GetPlanarDistanceSqr(grabPoint, bar.GrabPoint);
+
+            if (distanceSqr < closestDistanceSqr)
+            {
+                closestDistanceSqr = distanceSqr;
+                closestBar = bar;
+            }
+        }
+
+        return closestBar;
+    }
+
+    private Vector3 GetNormalHandPosition()
+    {
+        return normalHandGrabPoint != null ? normalHandGrabPoint.position : transform.position;
+    }
+
+    private static float GetPlanarDistanceSqr(Vector3 a, Vector3 b)
+    {
+        float x = a.x - b.x;
+        float y = a.y - b.y;
+        return x * x + y * y;
     }
 
     private static bool WasGrabPressedThisFrame()

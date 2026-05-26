@@ -29,6 +29,11 @@ public class PlayerController2D : MonoBehaviour
     [Tooltip("Drag the Animator on MonkeyVisual / monkey model here.")]
     [SerializeField] private Animator animator;
 
+    [Header("Jump Audio")]
+    [SerializeField] private AudioClip jumpClip;
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField, Range(0f, 3f)] private float jumpVolume = 1f;
+
     private Rigidbody rb;
     private Collider[] ownColliders;
     private readonly Collider[] groundHits = new Collider[8];
@@ -208,8 +213,23 @@ public class PlayerController2D : MonoBehaviour
         }
 
         rb.AddForce(Vector3.up * effectiveJumpForce, ForceMode.Impulse);
+        PlayJumpSound();
+        // Debug.Log("Playing Sound");
 
         UpdateAnimator();
+    }
+
+    private void PlayJumpSound()
+    {
+        if (jumpClip == null)
+        {
+            return;
+        }
+
+        if (audioSource != null)
+        {
+            audioSource.PlayOneShot(jumpClip, jumpVolume);
+        }
     }
 
     private void UpdateAnimator()

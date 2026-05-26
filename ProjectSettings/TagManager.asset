@@ -47,6 +47,9 @@ TagManager:
   - name: Soil
     uniqueID: 2204748001
     locked: 0
+  - name: Interactable
+    uniqueID: 2564854227
+    locked: 0
   m_RenderingLayers:
   - Default
   - Light Layer 1
