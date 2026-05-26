@@ -8,6 +8,11 @@ public class PlayerHandGrabSwing : MonoBehaviour
     [Header("References")]
     [SerializeField] private PlayerController2D playerController;
     [SerializeField] private Transform handGrabPoint;
+    [SerializeField] private Animator animator;
+
+    [Header("Animation")]
+    [SerializeField] private bool setAnimatorSwingingParameter = true;
+    [SerializeField] private string swingingParameterName = "IsSwinging";
 
     [Header("Grab")]
     [SerializeField] private float maxGrabDistance = 1.25f;
@@ -22,6 +27,9 @@ public class PlayerHandGrabSwing : MonoBehaviour
     [SerializeField] private float hingeForce = 180f;
     [SerializeField] private float targetVelocity = 220f;
     [SerializeField] private float startupTangentSpeed = 2f;
+    [SerializeField] private float startupAngularSpeed = 3f;
+    [SerializeField] private bool useAssistTorque = true;
+    [SerializeField] private float assistTorqueAcceleration = 45f;
     [SerializeField] private int defaultStartupDirection = 1;
 
     [Header("Release")]
@@ -48,6 +56,11 @@ public class PlayerHandGrabSwing : MonoBehaviour
         if (playerController == null)
         {
             playerController = GetComponent<PlayerController2D>();
+        }
+
+        if (animator == null)
+        {
+            animator = GetComponentInChildren<Animator>();
         }
     }
 
@@ -93,10 +106,17 @@ public class PlayerHandGrabSwing : MonoBehaviour
         swingJoint.motor = motor;
         swingJoint.useMotor = hasInput;
 
+        if (useAssistTorque && hasInput)
+        {
+            rb.AddTorque(Vector3.forward * swingInput * assistTorqueAcceleration, ForceMode.Acceleration);
+            rb.WakeUp();
+        }
+
         if (logHandDistanceToClosestBar)
         {
+            Vector3 worldAnchor = transform.TransformPoint(swingJoint.anchor);
             Debug.Log(
-                $"Swing input: {swingInput:F2}, velocity: {rb.linearVelocity}, jointAngle: {swingJoint.angle:F2}, jointVelocity: {swingJoint.velocity:F2}, useGravity: {rb.useGravity}, isKinematic: {rb.isKinematic}, constraints: {rb.constraints}",
+                $"Swing input: {swingInput:F2}, velocity: {rb.linearVelocity}, jointAngle: {swingJoint.angle:F2}, jointVelocity: {swingJoint.velocity:F2}, worldAnchor: {worldAnchor}, connectedAnchor: {swingJoint.connectedAnchor}, useGravity: {rb.useGravity}, isKinematic: {rb.isKinematic}, constraints: {rb.constraints}, angularVelocity: {rb.angularVelocity}",
                 this
             );
         }
@@ -146,24 +166,31 @@ public class PlayerHandGrabSwing : MonoBehaviour
         rb.constraints = RigidbodyConstraints.FreezePositionZ
             | RigidbodyConstraints.FreezeRotationX
             | RigidbodyConstraints.FreezeRotationY;
+        rb.angularVelocity = Vector3.zero;
 
         rb.linearVelocity = Vector3.ClampMagnitude(rb.linearVelocity, snapSpeedLimit);
         ClearBarOutlines();
 
+        Vector3 handPosition = GetHandPosition();
+        Vector3 connectedAnchor = bar.GrabPoint;
+        connectedAnchor.z = handPosition.z;
+
         swingJoint = gameObject.AddComponent<HingeJoint>();
         swingJoint.autoConfigureConnectedAnchor = false;
         swingJoint.connectedBody = null;
-        swingJoint.connectedAnchor = bar.GrabPoint;
-        swingJoint.anchor = transform.InverseTransformPoint(GetHandPosition());
+        swingJoint.connectedAnchor = connectedAnchor;
+        swingJoint.anchor = transform.InverseTransformPoint(handPosition);
         swingJoint.axis = transform.InverseTransformDirection(Vector3.forward);
         swingJoint.useLimits = false;
         swingJoint.useSpring = false;
         swingJoint.useMotor = false;
+        swingJoint.enablePreprocessing = false;
 
-        AddStartupSwingVelocity(bar.GrabPoint);
+        AddStartupSwingVelocity(connectedAnchor);
         rb.WakeUp();
 
         isSwinging = true;
+        SetAnimatorSwinging(true);
 
         if (playerController != null)
         {
@@ -199,10 +226,31 @@ public class PlayerHandGrabSwing : MonoBehaviour
         rb.linearVelocity = releaseVelocity;
 
         isSwinging = false;
+        SetAnimatorSwinging(false);
 
         if (playerController != null)
         {
             playerController.SetExternalMotionActive(false);
+        }
+    }
+
+    private void SetAnimatorSwinging(bool swinging)
+    {
+        if (!setAnimatorSwingingParameter || animator == null || string.IsNullOrEmpty(swingingParameterName))
+        {
+            return;
+        }
+
+        for (int i = 0; i < animator.parameterCount; i++)
+        {
+            AnimatorControllerParameter parameter = animator.GetParameter(i);
+
+            if (parameter.type == AnimatorControllerParameterType.Bool
+                && parameter.name == swingingParameterName)
+            {
+                animator.SetBool(swingingParameterName, swinging);
+                return;
+            }
         }
     }
 
@@ -233,6 +281,10 @@ public class PlayerHandGrabSwing : MonoBehaviour
         velocity += tangent * input * startupTangentSpeed;
         velocity.z = 0f;
         rb.linearVelocity = velocity;
+
+        Vector3 angularVelocity = rb.angularVelocity;
+        angularVelocity.z += input * startupAngularSpeed;
+        rb.angularVelocity = angularVelocity;
     }
 
     private HandSwingBar FindClosestBar()

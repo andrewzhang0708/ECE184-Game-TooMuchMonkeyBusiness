@@ -18,6 +18,7 @@ public class ChimpMovement : MonoBehaviour
 
     [SerializeField] private float m_hingeForce;
     [SerializeField] private float m_targetVelocity;
+    [SerializeField] private bool m_useInternalInput = true;
 
     private GrabState m_grabState = GrabState.Free;
 
@@ -60,6 +61,11 @@ public class ChimpMovement : MonoBehaviour
 
     private void Update()
     {
+        if (!m_useInternalInput)
+        {
+            return;
+        }
+
         if (!WasGrabPressedThisFrame())
         {
             return;
@@ -103,6 +109,62 @@ public class ChimpMovement : MonoBehaviour
     public bool IsConnected()
     {
         return !(m_grabState == GrabState.Free || m_grabState == GrabState.Trying);
+    }
+
+    public void SetUseInternalInput(bool useInternalInput)
+    {
+        m_useInternalInput = useInternalInput;
+    }
+
+    public bool IsTryingToGrab()
+    {
+        return m_grabState == GrabState.Trying;
+    }
+
+    public void BeginGrabAttempt()
+    {
+        if (m_grabState == GrabState.Free)
+        {
+            StartTryGrab();
+        }
+    }
+
+    public void CancelGrabOrRelease()
+    {
+        StopTryGrab();
+    }
+
+    public Vector3 GetAverageVelocity()
+    {
+        Rigidbody armsBody = m_arms != null ? m_arms.GetComponent<Rigidbody>() : null;
+        Rigidbody legsBody = m_legs != null ? m_legs.GetComponent<Rigidbody>() : null;
+
+        if (armsBody != null && legsBody != null)
+        {
+            return (armsBody.linearVelocity + legsBody.linearVelocity) * 0.5f;
+        }
+
+        if (armsBody != null)
+        {
+            return armsBody.linearVelocity;
+        }
+
+        if (legsBody != null)
+        {
+            return legsBody.linearVelocity;
+        }
+
+        return Vector3.zero;
+    }
+
+    public Vector3 GetRigCenter()
+    {
+        if (m_arms != null && m_legs != null)
+        {
+            return (m_arms.transform.position + m_legs.transform.position) * 0.5f;
+        }
+
+        return transform.position;
     }
 
     public void Connect(Swingable swingable, SwingPart swingPart)
