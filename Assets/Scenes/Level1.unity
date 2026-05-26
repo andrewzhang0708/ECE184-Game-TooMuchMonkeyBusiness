@@ -1266,6 +1266,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e95ec3654a5bca14487e67f83152b226, type: 3}
+--- !u!4 &312135720 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2957186331571905254, guid: e95ec3654a5bca14487e67f83152b226, type: 3}
+  m_PrefabInstance: {fileID: 74030382}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -1611,11 +1616,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1348444037329682488, guid: 66376ccc8198e0449ada271051720f69, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 583.63
+      value: 538.96
       objectReference: {fileID: 0}
     - target: {fileID: 1348444037329682488, guid: 66376ccc8198e0449ada271051720f69, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 25.65
+      value: 31.45
       objectReference: {fileID: 0}
     - target: {fileID: 1348444037329682488, guid: 66376ccc8198e0449ada271051720f69, type: 3}
       propertyPath: m_LocalPosition.z
@@ -1659,16 +1664,24 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3455293949217406816, guid: 66376ccc8198e0449ada271051720f69, type: 3}
       propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4456110953273167508, guid: 66376ccc8198e0449ada271051720f69, type: 3}
+      propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4456110953273167508, guid: 66376ccc8198e0449ada271051720f69, type: 3}
       propertyPath: grabRadius
       value: 4.09
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 4456110953273167508, guid: 66376ccc8198e0449ada271051720f69, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 3455293949217406816, guid: 66376ccc8198e0449ada271051720f69, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 744184931}
   m_SourcePrefab: {fileID: 100100000, guid: 66376ccc8198e0449ada271051720f69, type: 3}
 --- !u!1 &394002182
 GameObject:
@@ -3089,6 +3102,27 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1 &744184924 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3455293949217406816, guid: 66376ccc8198e0449ada271051720f69, type: 3}
+  m_PrefabInstance: {fileID: 358162139}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &744184931
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 744184924}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9e9bf77385604443a6b6b438a5a55fb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HandSwingBar
+  grabPoint: {fileID: 0}
+  useOutline: 1
+  outlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  outlineWidth: 5
 --- !u!1 &744617793
 GameObject:
   m_ObjectHideFlags: 0
@@ -4410,63 +4444,6 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
---- !u!1001 &920899307
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 1348444037329682488, guid: 66376ccc8198e0449ada271051720f69, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 609.72296
-      objectReference: {fileID: 0}
-    - target: {fileID: 1348444037329682488, guid: 66376ccc8198e0449ada271051720f69, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.1499937
-      objectReference: {fileID: 0}
-    - target: {fileID: 1348444037329682488, guid: 66376ccc8198e0449ada271051720f69, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 468.2
-      objectReference: {fileID: 0}
-    - target: {fileID: 1348444037329682488, guid: 66376ccc8198e0449ada271051720f69, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 1348444037329682488, guid: 66376ccc8198e0449ada271051720f69, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1348444037329682488, guid: 66376ccc8198e0449ada271051720f69, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1348444037329682488, guid: 66376ccc8198e0449ada271051720f69, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0.70710677
-      objectReference: {fileID: 0}
-    - target: {fileID: 1348444037329682488, guid: 66376ccc8198e0449ada271051720f69, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1348444037329682488, guid: 66376ccc8198e0449ada271051720f69, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1348444037329682488, guid: 66376ccc8198e0449ada271051720f69, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: -90
-      objectReference: {fileID: 0}
-    - target: {fileID: 3455293949217406816, guid: 66376ccc8198e0449ada271051720f69, type: 3}
-      propertyPath: m_Name
-      value: Branch
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 66376ccc8198e0449ada271051720f69, type: 3}
 --- !u!1 &934163560
 GameObject:
   m_ObjectHideFlags: 0
@@ -5449,9 +5426,8 @@ GameObject:
   - component: {fileID: 1304799081}
   - component: {fileID: 1304799080}
   - component: {fileID: 1304799079}
-  - component: {fileID: 1304799085}
-  - component: {fileID: 1304799086}
   - component: {fileID: 1304799087}
+  - component: {fileID: 1304799088}
   m_Layer: 0
   m_Name: Player2
   m_TagString: Player
@@ -5607,69 +5583,6 @@ Transform:
   - {fileID: 796446293}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1304799085
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1304799078}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b655fa4565d0d3c4a9442bc5298d64e4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  playerRb: {fileID: 1304799080}
-  isGrabbing: 0
-  grabAnchor: {fileID: 0}
-  kickImpulse: 8
-  kickCooldown: 0.18
-  allowKickInput: 1
-  bodyVisual: {fileID: 1350712362}
-  alignBodyToRope: 1
-  bodyAlignSpeed: 14
-  animator: {fileID: 0}
-  useAnimatorHangPose: 1
-  snapHangAnimation: 1
-  rebindAnimatorOnRelease: 1
-  leftHip: {fileID: 712175890}
-  rightHip: {fileID: 1435214808}
-  leftKnee: {fileID: 1035784601}
-  rightKnee: {fileID: 56296046}
-  leftShoulder: {fileID: 0}
-  rightShoulder: {fileID: 0}
-  leftElbow: {fileID: 0}
-  rightElbow: {fileID: 0}
-  leftWrist: {fileID: 0}
-  rightWrist: {fileID: 0}
-  poseArmsOnGrab: 1
-  armPoseBlendSpeed: 18
-  handSpread: 0.18
-  hipKickAngle: 35
-  kneeKickAngle: 25
-  kickOutSpeed: 18
-  returnSpeed: 10
---- !u!114 &1304799086
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1304799078}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 182bf47f8db364a4ca68208b9bc9a8ed, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MonkeyFollowCapsule
-  targetCapsule: {fileID: 892910966}
-  monkeyVisual: {fileID: 796446293}
-  positionOffset: {x: 0, y: 0, z: 0}
-  rotationOffsetEuler: {x: 0, y: 0, z: 0}
-  followPosition: 1
-  followRotation: 0
-  smoothFollow: 0
-  positionSmooth: 20
-  rotationSmooth: 20
 --- !u!95 &1304799087
 Animator:
   serializedVersion: 7
@@ -5692,6 +5605,30 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1304799088
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1304799078}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8731b4bc867c3be4fa17dda331ebf77c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHandGrabSwing
+  playerController: {fileID: 1304799079}
+  handGrabPoint: {fileID: 312135720}
+  maxGrabDistance: 10.99
+  snapSpeedLimit: 16
+  allowEKeyGrab: 1
+  logHandDistanceToClosestBar: 1
+  drawHandDistanceLine: 1
+  hingeForce: 180
+  targetVelocity: 220
+  startupTangentSpeed: 2
+  releaseBoost: 1
+  jumpReleaseImpulse: 5
 --- !u!1 &1317934532
 GameObject:
   m_ObjectHideFlags: 0
@@ -8747,7 +8684,6 @@ SceneRoots:
   - {fileID: 2120313794}
   - {fileID: 2043435520}
   - {fileID: 1979452281}
-  - {fileID: 920899307}
   - {fileID: 814716769}
   - {fileID: 1718499352}
   - {fileID: 196612885}
