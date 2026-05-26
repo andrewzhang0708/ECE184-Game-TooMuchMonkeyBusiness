@@ -88,7 +88,7 @@ public class ChimpMovement : MonoBehaviour
 
         bool swinging = Math.Abs(swingInput) > 0;
 
-        Debug.Log($"GrabState: {m_grabState}");
+        // Debug.Log($"GrabState: {m_grabState}");
 
         int direction = m_grabState == GrabState.Legs ? -1 : 1;
 
