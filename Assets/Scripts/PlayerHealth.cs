@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerHealth : MonoBehaviour
@@ -9,7 +10,7 @@ public class PlayerHealth : MonoBehaviour
 
     [Header("Damage Source")]
     [Tooltip("Optional. If set, objects with this tag can damage the player.")]
-    [SerializeField] private string enemyTag = "";
+    [SerializeField] private string enemyTag = "Enemy";
     [Tooltip("Optional. Leave as Nothing to ignore layer checks.")]
     [SerializeField] private LayerMask enemyLayer;
 
@@ -28,10 +29,15 @@ public class PlayerHealth : MonoBehaviour
     [SerializeField] private float knockbackHorizontalForce = 7f;
     [SerializeField] private float knockbackUpForce = 3f;
 
+    [Header("Death")]
+    [SerializeField] private float deathDelay = 1f;
+    [SerializeField] private string startScreenSceneName = "StartScreen";
+
     private Rigidbody rb;
     private int currentLives;
     private float invincibleUntil;
     private Coroutine controlLockRoutine;
+    private bool isDead;
 
     public int CurrentLives => currentLives;
     public bool IsInvincible => Time.time < invincibleUntil;
@@ -84,7 +90,7 @@ public class PlayerHealth : MonoBehaviour
 
     private void TryTakeDamage(Collider damageCollider)
     {
-        if (IsInvincible || currentLives <= 0)
+        if (IsInvincible || currentLives <= 0 || isDead)
         {
             return;
         }
@@ -105,6 +111,7 @@ public class PlayerHealth : MonoBehaviour
         if (currentLives <= 0)
         {
             Debug.Log("Player has no lives left.");
+            StartCoroutine(DeathRoutine());
         }
     }
 
@@ -116,6 +123,11 @@ public class PlayerHealth : MonoBehaviour
         }
 
         if (damageCollider.GetComponentInParent<SimpleHoppingEnemy>() != null)
+        {
+            return true;
+        }
+
+        if (damageCollider.GetComponentInParent<RollingSphereEnemy>() != null)
         {
             return true;
         }
@@ -214,5 +226,24 @@ public class PlayerHealth : MonoBehaviour
         {
             bananaShooter.enabled = enabled;
         }
+    }
+
+    private IEnumerator DeathRoutine()
+    {
+        isDead = true;
+
+        if (controlLockRoutine != null)
+        {
+            StopCoroutine(controlLockRoutine);
+            controlLockRoutine = null;
+        }
+
+        SetControlScriptsEnabled(false);
+
+        yield return new WaitForSecondsRealtime(deathDelay);
+
+        Time.timeScale = 1f;
+        MenuController.OpenLevelPanelOnNextStart();
+        SceneManager.LoadScene(startScreenSceneName);
     }
 }

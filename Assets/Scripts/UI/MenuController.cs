@@ -3,6 +3,8 @@ using UnityEngine.SceneManagement;
 
 public class MenuController : MonoBehaviour
 {
+    private static bool openLevelPanelOnStart;
+
     [Header("Panels")]
     public GameObject mainMenuPanel;
     public GameObject settingsPanel;
@@ -21,7 +23,19 @@ public class MenuController : MonoBehaviour
 
     private void Start()
     {
+        if (openLevelPanelOnStart)
+        {
+            openLevelPanelOnStart = false;
+            StartChooseLevel();
+            return;
+        }
+
         BackToMainMenu();
+    }
+
+    public static void OpenLevelPanelOnNextStart()
+    {
+        openLevelPanelOnStart = true;
     }
 
     private void StartLevel(string sceneName)
