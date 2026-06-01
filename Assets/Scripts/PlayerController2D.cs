@@ -18,6 +18,7 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] private float rollUphillDeceleration = 18f;
     [SerializeField] private float rollStopSpeed = 0.15f;
     [SerializeField] private float maxRollSpeed = 25f;
+    [SerializeField] private float rollVisualDegreesPerSpeed = 120f;
 
     [Header("Gravity")]
     [SerializeField] private float fallMultiplier = 2.5f;
@@ -59,6 +60,7 @@ public class PlayerController2D : MonoBehaviour
     private bool externalMotionActive;
     private float rollSpeed;
     private float rollHorizontalDirection;
+    private float rollVisualAngle;
     private float lastGroundedTime = float.NegativeInfinity;
     private float ignoreGroundUntil;
 
@@ -289,6 +291,7 @@ public class PlayerController2D : MonoBehaviour
         isRolling = true;
         rollHorizontalDirection = Mathf.Sign(downhillDirection.x);
         rollSpeed = Mathf.Max(0f, Vector3.Dot(rb.linearVelocity, downhillDirection));
+        rollVisualAngle = 0f;
         UpdateRollingFacing();
     }
 
@@ -350,6 +353,11 @@ public class PlayerController2D : MonoBehaviour
             rb.AddForce(Vector3.down * groundStickForce, ForceMode.Acceleration);
         }
 
+        rollVisualAngle -=
+            rollHorizontalDirection *
+            rollSpeed *
+            rollVisualDegreesPerSpeed *
+            Time.fixedDeltaTime;
         UpdateRollingFacing();
     }
 
@@ -375,7 +383,8 @@ public class PlayerController2D : MonoBehaviour
     {
         if (visualTransform != null)
         {
-            visualTransform.localRotation = rollingFacingRotation;
+            Quaternion rollRotation = Quaternion.AngleAxis(rollVisualAngle, Vector3.forward);
+            visualTransform.localRotation = rollRotation * rollingFacingRotation;
         }
     }
 
@@ -427,9 +436,25 @@ public class PlayerController2D : MonoBehaviour
 
         animator.SetBool("IsGrounded", isGrounded);
         animator.SetBool("IsRolling", isRolling);
-        animator.SetFloat("Speed", Mathf.Abs(rb.linearVelocity.x));
+        animator.SetFloat("Speed", GetRunningAnimationSpeed());
         animator.SetFloat("RollSpeed", rollSpeed);
         animator.SetFloat("VerticalSpeed", rb.linearVelocity.y);
+    }
+
+    private float GetRunningAnimationSpeed()
+    {
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard == null || !isGrounded || isRolling)
+        {
+            return 0f;
+        }
+
+        bool isMovingLeft = keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed;
+        bool isMovingRight = keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed;
+
+        return isMovingLeft != isMovingRight
+            ? Mathf.Abs(rb.linearVelocity.x)
+            : 0f;
     }
 
     public void SetExternalMotionActive(bool isActive)
@@ -467,7 +492,7 @@ public class PlayerController2D : MonoBehaviour
         {
             Collider hit = groundHits[i];
 
-            if (hit == null || IsOwnCollider(hit))
+            if (hit == null || IsOwnCollider(hit) || IsIgnoredOneWayPlatform(hit))
             {
                 continue;
             }
@@ -542,7 +567,11 @@ public class PlayerController2D : MonoBehaviour
         {
             RaycastHit hit = slopeHits[i];
 
-            if (hit.collider == null || IsOwnCollider(hit.collider))
+            if (
+                hit.collider == null ||
+                IsOwnCollider(hit.collider) ||
+                IsIgnoredOneWayPlatform(hit.collider)
+            )
             {
                 continue;
             }
@@ -572,5 +601,13 @@ public class PlayerController2D : MonoBehaviour
         }
 
         return false;
+    }
+
+    private bool IsIgnoredOneWayPlatform(Collider targetCollider)
+    {
+        OneWayMeshPlatform3D oneWayPlatform =
+            targetCollider.GetComponentInParent<OneWayMeshPlatform3D>();
+
+        return oneWayPlatform != null && oneWayPlatform.IsPassingThrough;
     }
 }

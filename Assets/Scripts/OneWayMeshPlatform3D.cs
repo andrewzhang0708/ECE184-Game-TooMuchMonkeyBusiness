@@ -18,7 +18,8 @@ public class OneWayMeshPlatform3D : MonoBehaviour
     private MeshCollider platformCollider;
     private Collider[] playerColliders;
     private Bounds platformBounds;
-    private float platformTop;
+
+    public bool IsPassingThrough { get; private set; }
 
     private void Awake()
     {
@@ -51,10 +52,7 @@ public class OneWayMeshPlatform3D : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (platformCollider.enabled)
-        {
-            RefreshPlatformBounds();
-        }
+        RefreshPlatformBounds();
 
         if (!TryGetPlayerBounds(out Bounds playerBounds))
         {
@@ -63,34 +61,29 @@ public class OneWayMeshPlatform3D : MonoBehaviour
 
         bool isHorizontallyNear = IsHorizontallyNearPlatform(playerBounds);
 
-        if (!platformCollider.enabled)
+        if (IsPassingThrough)
         {
-            if (!isHorizontallyNear || playerBounds.min.y >= platformTop + reenableClearance)
+            if (!isHorizontallyNear || IsPlayerAbovePlatform(playerBounds))
             {
-                platformCollider.enabled = true;
-                RefreshPlatformBounds();
+                SetPassingThrough(false);
             }
 
             return;
         }
 
-        bool isBelowPlatform = playerBounds.max.y < platformTop;
         bool isMovingUpThroughPlatform =
             playerRigidbody.linearVelocity.y > upwardSpeedThreshold &&
-            playerBounds.min.y <= platformTop + reenableClearance;
+            !IsPlayerAbovePlatform(playerBounds);
 
-        if (isHorizontallyNear && (isBelowPlatform || isMovingUpThroughPlatform))
+        if (isHorizontallyNear && isMovingUpThroughPlatform)
         {
-            platformCollider.enabled = false;
+            SetPassingThrough(true);
         }
     }
 
     private void OnDisable()
     {
-        if (platformCollider != null)
-        {
-            platformCollider.enabled = true;
-        }
+        SetPassingThrough(false);
     }
 
     private bool IsHorizontallyNearPlatform(Bounds playerBounds)
@@ -104,7 +97,56 @@ public class OneWayMeshPlatform3D : MonoBehaviour
     private void RefreshPlatformBounds()
     {
         platformBounds = platformCollider.bounds;
-        platformTop = platformBounds.max.y;
+    }
+
+    private bool IsPlayerAbovePlatform(Bounds playerBounds)
+    {
+        return TryGetSurfaceHeight(playerBounds.center, out float surfaceHeight) &&
+               playerBounds.min.y >= surfaceHeight + reenableClearance;
+    }
+
+    private bool TryGetSurfaceHeight(Vector3 playerCenter, out float surfaceHeight)
+    {
+        Vector3 rayOrigin = new Vector3(
+            playerCenter.x,
+            platformBounds.max.y + 1f,
+            playerCenter.z
+        );
+        Ray ray = new Ray(rayOrigin, Vector3.down);
+
+        if (platformCollider.Raycast(ray, out RaycastHit hit, platformBounds.size.y + 2f))
+        {
+            surfaceHeight = hit.point.y;
+            return true;
+        }
+
+        surfaceHeight = 0f;
+        return false;
+    }
+
+    private void SetPassingThrough(bool isPassingThrough)
+    {
+        if (IsPassingThrough == isPassingThrough || platformCollider == null)
+        {
+            return;
+        }
+
+        IsPassingThrough = isPassingThrough;
+
+        if (playerColliders == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < playerColliders.Length; i++)
+        {
+            Collider playerCollider = playerColliders[i];
+
+            if (playerCollider != null)
+            {
+                Physics.IgnoreCollision(platformCollider, playerCollider, isPassingThrough);
+            }
+        }
     }
 
     private bool TryGetPlayerBounds(out Bounds playerBounds)
