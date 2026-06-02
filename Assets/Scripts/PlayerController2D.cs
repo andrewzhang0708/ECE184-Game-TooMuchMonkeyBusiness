@@ -9,11 +9,15 @@ public class PlayerController2D : MonoBehaviour
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 7f;
     [SerializeField] private float airAcceleration = 18f;
+    [SerializeField] private float airDeceleration = 10f;
     [SerializeField] private float jumpForce = 8f;
     [Tooltip("Multiplier applied to upward velocity when the jump key is released early.")]
     [SerializeField, Range(0f, 1f)] private float jumpCutMultiplier = 0.45f;
+    [Tooltip("Time used to smoothly reduce upward velocity after releasing the jump key.")]
+    [SerializeField, Min(0.01f)] private float jumpCutDuration = 0.08f;
 
     [Header("Rolling")]
+    [SerializeField] private bool enableRolling;
     [SerializeField] private float minimumRollSlopeAngle = 3f;
     [SerializeField] private float rollSlopeAcceleration = 12f;
     [SerializeField] private float rollFlatDeceleration = 8f;
@@ -37,6 +41,7 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] private float groundStickForce = 20f;
     [SerializeField] private float groundGraceDuration = 0.08f;
     [SerializeField] private float jumpGroundIgnoreDuration = 0.1f;
+    [SerializeField] private bool logGroundColliderChanges;
 
     [Header("Visual Facing")]
     [Tooltip("Drag MonkeyVisual here, not the Player root.")]
@@ -62,11 +67,16 @@ public class PlayerController2D : MonoBehaviour
     private bool isGrounded;
     private bool isRolling;
     private bool externalMotionActive;
+    private bool isCuttingJumpShort;
+    private float jumpCutElapsed;
+    private float jumpCutStartVelocity;
+    private float jumpCutTargetVelocity;
     private float rollSpeed;
     private float rollHorizontalDirection;
     private float rollVisualAngle;
     private float lastGroundedTime = float.NegativeInfinity;
     private float ignoreGroundUntil;
+    private Collider lastLoggedGroundCollider;
 
     private Quaternion facingRightRotation;
     private Quaternion facingLeftRotation;
@@ -134,7 +144,7 @@ public class PlayerController2D : MonoBehaviour
             CutJumpShort();
         }
 
-        if (rollPressed && !isRolling)
+        if (enableRolling && rollPressed && !isRolling)
         {
             TryStartRolling();
         }
@@ -168,6 +178,7 @@ public class PlayerController2D : MonoBehaviour
             Move();
         }
 
+        UpdateJumpCut();
         ApplyExtraGravity();
         UpdateAnimator();
     }
@@ -250,6 +261,14 @@ public class PlayerController2D : MonoBehaviour
                 velocity.x,
                 targetSpeed,
                 airAcceleration * Time.fixedDeltaTime
+            );
+        }
+        else
+        {
+            velocity.x = Mathf.MoveTowards(
+                velocity.x,
+                0f,
+                airDeceleration * Time.fixedDeltaTime
             );
         }
 
@@ -495,6 +514,7 @@ public class PlayerController2D : MonoBehaviour
     {
         rb.useGravity = true;
         isGrounded = false;
+        isCuttingJumpShort = false;
         lastGroundedTime = float.NegativeInfinity;
         ignoreGroundUntil = Time.time + jumpGroundIgnoreDuration;
 
@@ -527,8 +547,41 @@ public class PlayerController2D : MonoBehaviour
             return;
         }
 
-        velocity.y *= jumpCutMultiplier;
+        isCuttingJumpShort = true;
+        jumpCutElapsed = 0f;
+        jumpCutStartVelocity = velocity.y;
+        jumpCutTargetVelocity = velocity.y * jumpCutMultiplier;
+    }
+
+    private void UpdateJumpCut()
+    {
+        if (!isCuttingJumpShort)
+        {
+            return;
+        }
+
+        Vector3 velocity = rb.linearVelocity;
+        if (isGrounded || velocity.y <= 0f)
+        {
+            isCuttingJumpShort = false;
+            return;
+        }
+
+        jumpCutElapsed += Time.fixedDeltaTime;
+        float progress = Mathf.Clamp01(jumpCutElapsed / jumpCutDuration);
+        float smoothedTarget = Mathf.Lerp(
+            jumpCutStartVelocity,
+            jumpCutTargetVelocity,
+            progress
+        );
+
+        velocity.y = Mathf.Min(velocity.y, smoothedTarget);
         rb.linearVelocity = velocity;
+
+        if (progress >= 1f)
+        {
+            isCuttingJumpShort = false;
+        }
     }
 
     private void PlayJumpSound()
@@ -581,6 +634,7 @@ public class PlayerController2D : MonoBehaviour
         if (isActive)
         {
             rb.useGravity = true;
+            isCuttingJumpShort = false;
             StopRolling(false);
         }
     }
@@ -632,6 +686,7 @@ public class PlayerController2D : MonoBehaviour
 
             isGrounded = true;
             lastGroundedTime = Time.time;
+            LogGroundCollider(hit);
             return;
         }
 
@@ -665,6 +720,7 @@ public class PlayerController2D : MonoBehaviour
             {
                 isGrounded = true;
                 lastGroundedTime = Time.time;
+                LogGroundCollider(hitCollider);
                 return;
             }
         }
@@ -773,5 +829,37 @@ public class PlayerController2D : MonoBehaviour
     {
         int hitLayer = targetCollider.gameObject.layer;
         return (groundLayer.value & (1 << hitLayer)) != 0;
+    }
+
+    private void LogGroundCollider(Collider groundCollider)
+    {
+        if (!logGroundColliderChanges || groundCollider == lastLoggedGroundCollider)
+        {
+            return;
+        }
+
+        lastLoggedGroundCollider = groundCollider;
+        Debug.Log(
+            "Standing on collider: " +
+            groundCollider.name +
+            " | Layer: " +
+            LayerMask.LayerToName(groundCollider.gameObject.layer) +
+            " | Path: " +
+            GetHierarchyPath(groundCollider.transform),
+            groundCollider
+        );
+    }
+
+    private static string GetHierarchyPath(Transform target)
+    {
+        string path = target.name;
+
+        while (target.parent != null)
+        {
+            target = target.parent;
+            path = target.name + "/" + path;
+        }
+
+        return path;
     }
 }
