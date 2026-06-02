@@ -10,6 +10,8 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] private float moveSpeed = 7f;
     [SerializeField] private float airAcceleration = 18f;
     [SerializeField] private float jumpForce = 8f;
+    [Tooltip("Multiplier applied to upward velocity when the jump key is released early.")]
+    [SerializeField, Range(0f, 1f)] private float jumpCutMultiplier = 0.45f;
 
     [Header("Rolling")]
     [SerializeField] private float minimumRollSlopeAngle = 3f;
@@ -19,6 +21,7 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] private float rollStopSpeed = 0.15f;
     [SerializeField] private float maxRollSpeed = 25f;
     [SerializeField] private float rollVisualDegreesPerSpeed = 120f;
+    [SerializeField] private float rollWallCheckDistance = 0.15f;
 
     [Header("Gravity")]
     [SerializeField] private float fallMultiplier = 2.5f;
@@ -52,6 +55,7 @@ public class PlayerController2D : MonoBehaviour
     private Collider[] ownColliders;
     private readonly Collider[] groundHits = new Collider[8];
     private readonly RaycastHit[] slopeHits = new RaycastHit[8];
+    private readonly RaycastHit[] wallHits = new RaycastHit[8];
 
     private const float VerticalWallAngle = 89.9f;
 
@@ -121,7 +125,14 @@ public class PlayerController2D : MonoBehaviour
         CheckGround();
 
         bool jumpPressed = keyboard.wKey.wasPressedThisFrame || keyboard.upArrowKey.wasPressedThisFrame;
+        bool jumpReleased = keyboard.wKey.wasReleasedThisFrame || keyboard.upArrowKey.wasReleasedThisFrame;
+        bool jumpHeld = keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed;
         bool rollPressed = keyboard.sKey.wasPressedThisFrame || keyboard.downArrowKey.wasPressedThisFrame;
+
+        if (jumpReleased && !jumpHeld)
+        {
+            CutJumpShort();
+        }
 
         if (rollPressed && !isRolling)
         {
@@ -205,6 +216,11 @@ public class PlayerController2D : MonoBehaviour
 
         Vector3 velocity = rb.linearVelocity;
         bool isIdle = Mathf.Approximately(horizontal, 0f);
+        Vector3 movementGroundNormal = Vector3.up;
+        bool hasGroundNormal =
+            isGrounded &&
+            TryGetGroundNormal(horizontal, out movementGroundNormal);
+        rb.useGravity = !hasGroundNormal;
 
         if (isGrounded)
         {
@@ -213,9 +229,10 @@ public class PlayerController2D : MonoBehaviour
                 velocity.x = 0f;
                 velocity.y = 0f;
             }
-            else if (TryGetGroundNormal(horizontal, out Vector3 groundNormal))
+            else if (hasGroundNormal)
             {
-                Vector3 slopeDirection = Vector3.ProjectOnPlane(Vector3.right, groundNormal).normalized;
+                Vector3 slopeDirection =
+                    Vector3.ProjectOnPlane(Vector3.right, movementGroundNormal).normalized;
                 Vector3 slopeVelocity = slopeDirection * (horizontal * moveSpeed);
 
                 velocity.x = slopeVelocity.x;
@@ -239,14 +256,13 @@ public class PlayerController2D : MonoBehaviour
         velocity.z = 0f;
         rb.linearVelocity = velocity;
 
-        if (isGrounded && isIdle && TryGetGroundNormal(out Vector3 idleGroundNormal))
+        if (isGrounded && !isIdle && groundStickForce > 0f)
         {
-            Vector3 slopeGravity = Vector3.ProjectOnPlane(Physics.gravity, idleGroundNormal);
-            rb.AddForce(-slopeGravity, ForceMode.Acceleration);
-        }
-        else if (isGrounded && groundStickForce > 0f)
-        {
-            rb.AddForce(Vector3.down * groundStickForce, ForceMode.Acceleration);
+            Vector3 stickDirection = hasGroundNormal
+                ? -movementGroundNormal
+                : Vector3.down;
+
+            rb.AddForce(stickDirection * groundStickForce, ForceMode.Acceleration);
         }
 
         UpdateFacing(horizontal);
@@ -289,6 +305,7 @@ public class PlayerController2D : MonoBehaviour
         }
 
         isRolling = true;
+        rb.useGravity = true;
         rollHorizontalDirection = Mathf.Sign(downhillDirection.x);
         rollSpeed = Mathf.Max(0f, Vector3.Dot(rb.linearVelocity, downhillDirection));
         rollVisualAngle = 0f;
@@ -297,6 +314,14 @@ public class PlayerController2D : MonoBehaviour
 
     private void UpdateRolling()
     {
+        rb.useGravity = true;
+
+        if (IsRollingIntoWall())
+        {
+            StopRolling(true);
+            return;
+        }
+
         if (!isGrounded)
         {
             StopRolling(false);
@@ -361,6 +386,84 @@ public class PlayerController2D : MonoBehaviour
         UpdateRollingFacing();
     }
 
+    private bool IsRollingIntoWall()
+    {
+        if (Mathf.Approximately(rollHorizontalDirection, 0f))
+        {
+            return false;
+        }
+
+        Bounds playerBounds = GetPlayerBounds();
+        float radius = Mathf.Min(playerBounds.extents.x, playerBounds.extents.y);
+        radius = Mathf.Max(radius, 0.05f);
+        float halfHeight = Mathf.Max(playerBounds.extents.y, radius);
+        Vector3 center = playerBounds.center;
+        Vector3 top = center + Vector3.up * (halfHeight - radius);
+        Vector3 bottom = center - Vector3.up * (halfHeight - radius);
+        Vector3 direction = Vector3.right * rollHorizontalDirection;
+
+        int hitCount = Physics.CapsuleCastNonAlloc(
+            top,
+            bottom,
+            radius,
+            direction,
+            wallHits,
+            rollWallCheckDistance,
+            groundLayer,
+            QueryTriggerInteraction.Ignore
+        );
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            RaycastHit hit = wallHits[i];
+
+            if (
+                hit.collider == null ||
+                IsOwnCollider(hit.collider) ||
+                IsIgnoredOneWayPlatform(hit.collider)
+            )
+            {
+                continue;
+            }
+
+            float wallAngle = Vector3.Angle(hit.normal, Vector3.up);
+            if (wallAngle >= VerticalWallAngle)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private Bounds GetPlayerBounds()
+    {
+        Bounds playerBounds = new Bounds(transform.position, Vector3.zero);
+        bool foundCollider = false;
+
+        for (int i = 0; i < ownColliders.Length; i++)
+        {
+            Collider ownCollider = ownColliders[i];
+
+            if (ownCollider == null || !ownCollider.enabled || ownCollider.isTrigger)
+            {
+                continue;
+            }
+
+            if (!foundCollider)
+            {
+                playerBounds = ownCollider.bounds;
+                foundCollider = true;
+            }
+            else
+            {
+                playerBounds.Encapsulate(ownCollider.bounds);
+            }
+        }
+
+        return playerBounds;
+    }
+
     private void StopRolling(bool stopCompletely)
     {
         isRolling = false;
@@ -390,6 +493,7 @@ public class PlayerController2D : MonoBehaviour
 
     private void Jump()
     {
+        rb.useGravity = true;
         isGrounded = false;
         lastGroundedTime = float.NegativeInfinity;
         ignoreGroundUntil = Time.time + jumpGroundIgnoreDuration;
@@ -412,6 +516,19 @@ public class PlayerController2D : MonoBehaviour
         // Debug.Log("Playing Sound");
 
         UpdateAnimator();
+    }
+
+    private void CutJumpShort()
+    {
+        Vector3 velocity = rb.linearVelocity;
+
+        if (isGrounded || velocity.y <= 0f)
+        {
+            return;
+        }
+
+        velocity.y *= jumpCutMultiplier;
+        rb.linearVelocity = velocity;
     }
 
     private void PlayJumpSound()
@@ -463,7 +580,16 @@ public class PlayerController2D : MonoBehaviour
 
         if (isActive)
         {
+            rb.useGravity = true;
             StopRolling(false);
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (rb != null)
+        {
+            rb.useGravity = true;
         }
     }
 
@@ -510,6 +636,38 @@ public class PlayerController2D : MonoBehaviour
         }
 
         isGrounded = Time.time - lastGroundedTime <= groundGraceDuration;
+    }
+
+    private void OnCollisionStay(Collision collision)
+    {
+        if (Time.time < ignoreGroundUntil)
+        {
+            return;
+        }
+
+        Collider hitCollider = collision.collider;
+
+        if (
+            hitCollider == null ||
+            !IsGroundLayer(hitCollider) ||
+            IsIgnoredOneWayPlatform(hitCollider)
+        )
+        {
+            return;
+        }
+
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            ContactPoint contact = collision.GetContact(i);
+            float slopeAngle = Vector3.Angle(contact.normal, Vector3.up);
+
+            if (slopeAngle < VerticalWallAngle)
+            {
+                isGrounded = true;
+                lastGroundedTime = Time.time;
+                return;
+            }
+        }
     }
 
     private bool TryGetGroundNormal(out Vector3 groundNormal)
@@ -609,5 +767,11 @@ public class PlayerController2D : MonoBehaviour
             targetCollider.GetComponentInParent<OneWayMeshPlatform3D>();
 
         return oneWayPlatform != null && oneWayPlatform.IsPassingThrough;
+    }
+
+    private bool IsGroundLayer(Collider targetCollider)
+    {
+        int hitLayer = targetCollider.gameObject.layer;
+        return (groundLayer.value & (1 << hitLayer)) != 0;
     }
 }
