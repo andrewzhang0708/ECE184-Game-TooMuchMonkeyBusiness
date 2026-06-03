@@ -1,13 +1,13 @@
 using UnityEditor;
 using UnityEngine;
 
-public static class TrampolineRope2DCreator
+public static class SimpleVineSwingCreator
 {
-    [MenuItem("GameObject/Too Much Monkey Business/Trampoline Rope 2D", false, 10)]
-    public static void CreateRope()
+    [MenuItem("GameObject/Too Much Monkey Business/Simple Vine Swing", false, 10)]
+    public static void CreateVineSwing()
     {
-        GameObject rope = new GameObject("Trampoline Rope 2D");
-        Undo.RegisterCreatedObjectUndo(rope, "Create Trampoline Rope 2D");
+        GameObject rope = new GameObject("Simple Vine Swing");
+        Undo.RegisterCreatedObjectUndo(rope, "Create Simple Vine Swing");
 
         rope.transform.position = GetSpawnPosition();
 
@@ -20,7 +20,12 @@ public static class TrampolineRope2DCreator
         line.startColor = new Color(0.45f, 0.28f, 0.12f);
         line.endColor = new Color(0.45f, 0.28f, 0.12f);
 
-        rope.AddComponent<TrampolineRope2D>();
+        Rigidbody body = rope.AddComponent<Rigidbody>();
+        body.useGravity = true;
+        body.constraints = RigidbodyConstraints.FreezePositionZ;
+
+        rope.AddComponent<HingeJoint>().axis = Vector3.forward;
+        rope.AddComponent<SimpleVineSwing>();
 
         Selection.activeGameObject = rope;
         SceneView.lastActiveSceneView?.FrameSelected();

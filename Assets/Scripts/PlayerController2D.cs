@@ -81,6 +81,12 @@ public class PlayerController2D : MonoBehaviour
     private Quaternion facingRightRotation;
     private Quaternion facingLeftRotation;
     private Quaternion rollingFacingRotation;
+    private Animator cachedAnimator;
+    private bool animatorHasIsGrounded;
+    private bool animatorHasIsRolling;
+    private bool animatorHasSpeed;
+    private bool animatorHasRollSpeed;
+    private bool animatorHasVerticalSpeed;
 
     private void Awake()
     {
@@ -122,12 +128,7 @@ public class PlayerController2D : MonoBehaviour
             return;
         }
 
-        if (keyboard.eKey.wasPressedThisFrame && HorizontalBarSwing2D.TryGrabClosest(rb, out _))
-        {
-            return;
-        }
-
-        if (keyboard.eKey.wasPressedThisFrame && TrampolineRope2D.TryGrabClosest(rb, out _))
+        if (keyboard.eKey.wasPressedThisFrame && SimpleVineSwing.TryGrabClosest(rb, out _))
         {
             return;
         }
@@ -604,11 +605,67 @@ public class PlayerController2D : MonoBehaviour
             return;
         }
 
-        animator.SetBool("IsGrounded", isGrounded);
-        animator.SetBool("IsRolling", isRolling);
-        animator.SetFloat("Speed", GetRunningAnimationSpeed());
-        animator.SetFloat("RollSpeed", rollSpeed);
-        animator.SetFloat("VerticalSpeed", rb.linearVelocity.y);
+        CacheAnimatorParameters();
+
+        if (animatorHasIsGrounded)
+        {
+            animator.SetBool("IsGrounded", isGrounded);
+        }
+
+        if (animatorHasIsRolling)
+        {
+            animator.SetBool("IsRolling", isRolling);
+        }
+
+        if (animatorHasSpeed)
+        {
+            animator.SetFloat("Speed", GetRunningAnimationSpeed());
+        }
+
+        if (animatorHasRollSpeed)
+        {
+            animator.SetFloat("RollSpeed", rollSpeed);
+        }
+
+        if (animatorHasVerticalSpeed)
+        {
+            animator.SetFloat("VerticalSpeed", rb.linearVelocity.y);
+        }
+    }
+
+    private void CacheAnimatorParameters()
+    {
+        if (cachedAnimator == animator)
+        {
+            return;
+        }
+
+        cachedAnimator = animator;
+        animatorHasIsGrounded = HasAnimatorParameter("IsGrounded", AnimatorControllerParameterType.Bool);
+        animatorHasIsRolling = HasAnimatorParameter("IsRolling", AnimatorControllerParameterType.Bool);
+        animatorHasSpeed = HasAnimatorParameter("Speed", AnimatorControllerParameterType.Float);
+        animatorHasRollSpeed = HasAnimatorParameter("RollSpeed", AnimatorControllerParameterType.Float);
+        animatorHasVerticalSpeed = HasAnimatorParameter("VerticalSpeed", AnimatorControllerParameterType.Float);
+    }
+
+    private bool HasAnimatorParameter(string parameterName, AnimatorControllerParameterType parameterType)
+    {
+        if (animator == null)
+        {
+            return false;
+        }
+
+        AnimatorControllerParameter[] parameters = animator.parameters;
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            AnimatorControllerParameter parameter = parameters[i];
+            if (parameter.name == parameterName && parameter.type == parameterType)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private float GetRunningAnimationSpeed()

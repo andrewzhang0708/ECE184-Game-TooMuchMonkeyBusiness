@@ -21,8 +21,6 @@ public class PlayerHealth : MonoBehaviour
     [Tooltip("Disable player control scripts while invincible so knockback can carry the player away.")]
     [SerializeField] private bool disableControlsWhileInvincible = true;
     [SerializeField] private PlayerController2D playerController;
-    [SerializeField] private ChimpMovement chimpMovement;
-    [SerializeField] private PlayerHandGrabSwing handGrabSwing;
     [SerializeField] private BananaShooter bananaShooter;
 
     [Header("Knockback")]
@@ -50,16 +48,6 @@ public class PlayerHealth : MonoBehaviour
         if (playerController == null)
         {
             playerController = GetComponent<PlayerController2D>();
-        }
-
-        if (chimpMovement == null)
-        {
-            chimpMovement = GetComponent<ChimpMovement>();
-        }
-
-        if (handGrabSwing == null)
-        {
-            handGrabSwing = GetComponent<PlayerHandGrabSwing>();
         }
 
         if (bananaShooter == null)
@@ -174,8 +162,6 @@ public class PlayerHealth : MonoBehaviour
     private IEnumerator ControlLockRoutine(float duration)
     {
         bool wasPlayerControllerEnabled = playerController != null && playerController.enabled;
-        bool wasChimpMovementEnabled = chimpMovement != null && chimpMovement.enabled;
-        bool wasHandGrabSwingEnabled = handGrabSwing != null && handGrabSwing.enabled;
         bool wasBananaShooterEnabled = bananaShooter != null && bananaShooter.enabled;
 
         SetControlScriptsEnabled(false);
@@ -185,16 +171,6 @@ public class PlayerHealth : MonoBehaviour
         if (playerController != null)
         {
             playerController.enabled = wasPlayerControllerEnabled;
-        }
-
-        if (chimpMovement != null)
-        {
-            chimpMovement.enabled = wasChimpMovementEnabled;
-        }
-
-        if (handGrabSwing != null)
-        {
-            handGrabSwing.enabled = wasHandGrabSwingEnabled;
         }
 
         if (bananaShooter != null)
@@ -210,16 +186,6 @@ public class PlayerHealth : MonoBehaviour
         if (playerController != null)
         {
             playerController.enabled = enabled;
-        }
-
-        if (chimpMovement != null)
-        {
-            chimpMovement.enabled = enabled;
-        }
-
-        if (handGrabSwing != null)
-        {
-            handGrabSwing.enabled = enabled;
         }
 
         if (bananaShooter != null)

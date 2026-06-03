@@ -46,8 +46,7 @@ public class WinObject : MonoBehaviour
         }
 
         return other.GetComponentInParent<PlayerHealth>() != null
-            || other.GetComponentInParent<PlayerController2D>() != null
-            || other.GetComponentInParent<ChimpMovement>() != null;
+            || other.GetComponentInParent<PlayerController2D>() != null;
     }
 
     private IEnumerator WinRoutine()
