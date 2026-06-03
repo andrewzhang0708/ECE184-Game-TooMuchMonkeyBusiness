@@ -42,6 +42,9 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] private float groundGraceDuration = 0.08f;
     [SerializeField] private float jumpGroundIgnoreDuration = 0.1f;
     [SerializeField] private bool logGroundColliderChanges;
+    [SerializeField] private bool logGroundCheckDebug = true;
+    [SerializeField] private float groundCheckDebugInterval = 0.25f;
+    [SerializeField] private float groundCheckDebugRayDistance = 20f;
 
     [Header("Visual Facing")]
     [Tooltip("Drag MonkeyVisual here, not the Player root.")]
@@ -75,6 +78,8 @@ public class PlayerController2D : MonoBehaviour
     private float rollHorizontalDirection;
     private float rollVisualAngle;
     private float lastGroundedTime = float.NegativeInfinity;
+    private float lastGroundContactTime = float.NegativeInfinity;
+    private float nextGroundCheckDebugTime;
     private float ignoreGroundUntil;
     private Collider lastLoggedGroundCollider;
 
@@ -186,7 +191,7 @@ public class PlayerController2D : MonoBehaviour
 
     private void ApplyExtraGravity()
     {
-        if (isGrounded)
+        if (isGrounded && HasRecentGroundContact())
         {
             return;
         }
@@ -229,12 +234,14 @@ public class PlayerController2D : MonoBehaviour
         Vector3 velocity = rb.linearVelocity;
         bool isIdle = Mathf.Approximately(horizontal, 0f);
         Vector3 movementGroundNormal = Vector3.up;
+        bool hasGroundContact = HasRecentGroundContact();
+        bool canUseGroundMovement = isGrounded && hasGroundContact;
         bool hasGroundNormal =
-            isGrounded &&
+            canUseGroundMovement &&
             TryGetGroundNormal(horizontal, out movementGroundNormal);
         rb.useGravity = !hasGroundNormal;
 
-        if (isGrounded)
+        if (canUseGroundMovement)
         {
             if (isIdle)
             {
@@ -276,7 +283,7 @@ public class PlayerController2D : MonoBehaviour
         velocity.z = 0f;
         rb.linearVelocity = velocity;
 
-        if (isGrounded && !isIdle && groundStickForce > 0f)
+        if (canUseGroundMovement && !isIdle && groundStickForce > 0f)
         {
             Vector3 stickDirection = hasGroundNormal
                 ? -movementGroundNormal
@@ -609,7 +616,7 @@ public class PlayerController2D : MonoBehaviour
 
         if (animatorHasIsGrounded)
         {
-            animator.SetBool("IsGrounded", isGrounded);
+            animator.SetBool("IsGrounded", isGrounded && HasRecentGroundContact());
         }
 
         if (animatorHasIsRolling)
@@ -671,7 +678,7 @@ public class PlayerController2D : MonoBehaviour
     private float GetRunningAnimationSpeed()
     {
         Keyboard keyboard = Keyboard.current;
-        if (keyboard == null || !isGrounded || isRolling)
+        if (keyboard == null || !isGrounded || !HasRecentGroundContact() || isRolling)
         {
             return 0f;
         }
@@ -709,6 +716,10 @@ public class PlayerController2D : MonoBehaviour
         if (Time.time < ignoreGroundUntil)
         {
             isGrounded = false;
+            lastGroundContactTime = float.NegativeInfinity;
+            LogGroundCheckDebug(false, groundCheck != null
+                ? groundCheck.position
+                : transform.position + Vector3.down * 0.55f);
             return;
         }
 
@@ -744,10 +755,12 @@ public class PlayerController2D : MonoBehaviour
             isGrounded = true;
             lastGroundedTime = Time.time;
             LogGroundCollider(hit);
+            LogGroundCheckDebug(true, checkPosition);
             return;
         }
 
         isGrounded = Time.time - lastGroundedTime <= groundGraceDuration;
+        LogGroundCheckDebug(isGrounded, checkPosition);
     }
 
     private void OnCollisionStay(Collision collision)
@@ -777,6 +790,7 @@ public class PlayerController2D : MonoBehaviour
             {
                 isGrounded = true;
                 lastGroundedTime = Time.time;
+                lastGroundContactTime = Time.time;
                 LogGroundCollider(hitCollider);
                 return;
             }
@@ -886,6 +900,96 @@ public class PlayerController2D : MonoBehaviour
     {
         int hitLayer = targetCollider.gameObject.layer;
         return (groundLayer.value & (1 << hitLayer)) != 0;
+    }
+
+    private bool HasRecentGroundContact()
+    {
+        return Time.time - lastGroundContactTime <= groundGraceDuration;
+    }
+
+    private void LogGroundCheckDebug(bool grounded, Vector3 checkPosition)
+    {
+        if (!logGroundCheckDebug || Time.time < nextGroundCheckDebugTime)
+        {
+            return;
+        }
+
+        nextGroundCheckDebugTime = Time.time + groundCheckDebugInterval;
+
+        if (grounded)
+        {
+            Debug.Log("GroundCheck: T", this);
+            return;
+        }
+
+        if (TryGetGroundCheckDistance(checkPosition, out float distanceToGround, out Collider groundCollider))
+        {
+            Debug.Log(
+                "GroundCheck: F | distance to ground: " +
+                distanceToGround.ToString("F3") +
+                " | ground: " +
+                groundCollider.name,
+                groundCollider
+            );
+            return;
+        }
+
+        Debug.Log(
+            "GroundCheck: F | no ground within " +
+            groundCheckDebugRayDistance.ToString("F1") +
+            " units",
+            this
+        );
+    }
+
+    private bool TryGetGroundCheckDistance(
+        Vector3 checkPosition,
+        out float distanceToGround,
+        out Collider groundCollider
+    )
+    {
+        int hitCount = Physics.RaycastNonAlloc(
+            checkPosition,
+            Vector3.down,
+            slopeHits,
+            groundCheckDebugRayDistance,
+            groundLayer,
+            QueryTriggerInteraction.Ignore
+        );
+
+        float closestDistance = float.PositiveInfinity;
+        groundCollider = null;
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            RaycastHit hit = slopeHits[i];
+
+            if (
+                hit.collider == null ||
+                IsOwnCollider(hit.collider) ||
+                IsIgnoredOneWayPlatform(hit.collider)
+            )
+            {
+                continue;
+            }
+
+            if (hit.distance >= closestDistance)
+            {
+                continue;
+            }
+
+            closestDistance = hit.distance;
+            groundCollider = hit.collider;
+        }
+
+        if (groundCollider == null)
+        {
+            distanceToGround = 0f;
+            return false;
+        }
+
+        distanceToGround = Mathf.Max(0f, closestDistance - groundCheckRadius);
+        return true;
     }
 
     private void LogGroundCollider(Collider groundCollider)

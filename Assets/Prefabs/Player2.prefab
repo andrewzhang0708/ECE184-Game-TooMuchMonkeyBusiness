@@ -9,7 +9,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6170494222686165601}
-  - component: {fileID: 6181612494396619052}
   m_Layer: 0
   m_Name: MonkeyVisual
   m_TagString: Untagged
@@ -33,36 +32,6 @@ Transform:
   - {fileID: 2563874365101036805}
   m_Father: {fileID: 2522016266461355485}
   m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
---- !u!114 &6181612494396619052
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 746209914371939209}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7fa4b4259a34da44085ebdf11fd74464, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MonkeyLowerBodyPose
-  pelvis: {fileID: 4629479744513855570}
-  waist: {fileID: 2075716716722512992}
-  leftHip: {fileID: 5163740155614690678}
-  rightHip: {fileID: 3016722566905453535}
-  leftKnee: {fileID: 1765832230381946670}
-  rightKnee: {fileID: 5409013325550421045}
-  debugPose: 0
-  useKeyboardInput: 1
-  poseBlendSpeed: 8
-  rotationAxis: 2
-  waistStretchAngle: -20
-  waistTuckAngle: 25
-  pelvisStretchAngle: -10
-  pelvisTuckAngle: 15
-  hipStretchAngle: -35
-  hipTuckAngle: 55
-  kneeStretchAngle: 10
-  kneeTuckAngle: 65
 --- !u!1 &1692089061731530996
 GameObject:
   m_ObjectHideFlags: 0
@@ -246,8 +215,6 @@ GameObject:
   - component: {fileID: 7288184361111873154}
   - component: {fileID: 8494436175874447162}
   - component: {fileID: 1006131616448617749}
-  - component: {fileID: 4383652863320120618}
-  - component: {fileID: 460284053510760708}
   - component: {fileID: 7198634112472057422}
   - component: {fileID: 5303112921765732388}
   m_Layer: 0
@@ -272,7 +239,6 @@ Transform:
   m_Children:
   - {fileID: 4087276869259500507}
   - {fileID: 6170494222686165601}
-  - {fileID: 5321048388936900147}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &407515471400995177
@@ -396,7 +362,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController2D
   moveSpeed: 6.86
   airAcceleration: 18
+  airDeceleration: 10
   jumpForce: 28
+  jumpCutMultiplier: 0.45
+  jumpCutDuration: 0.08
+  enableRolling: 0
+  minimumRollSlopeAngle: 3
+  rollSlopeAcceleration: 12
+  rollFlatDeceleration: 8
+  rollUphillDeceleration: 18
+  rollStopSpeed: 0.15
+  maxRollSpeed: 25
+  rollVisualDegreesPerSpeed: 120
+  rollWallCheckDistance: 0.15
   fallMultiplier: 2.5
   applyGravityWhileAscending: 1
   groundCheck: {fileID: 4087276869259500507}
@@ -404,6 +382,12 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 4294967295
+  slopeCheckDistance: 0.9
+  slopeProbeForwardDistance: 0.35
+  groundStickForce: 20
+  groundGraceDuration: 0.08
+  jumpGroundIgnoreDuration: 0.1
+  logGroundColliderChanges: 0
   visualTransform: {fileID: 6170494222686165601}
   animator: {fileID: 1006131616448617749}
   jumpClip: {fileID: 8300000, guid: 8c1eae136041e0645aed071b32564cbc, type: 3}
@@ -431,66 +415,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &4383652863320120618
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2972812932901283394}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8731b4bc867c3be4fa17dda331ebf77c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerHandGrabSwing
-  playerController: {fileID: 8494436175874447162}
-  handGrabPoint: {fileID: 942384918583136264}
-  animator: {fileID: 0}
-  setAnimatorSwingingParameter: 1
-  swingingParameterName: IsSwinging
-  maxGrabDistance: 10.99
-  snapSpeedLimit: 16
-  allowEKeyGrab: 1
-  logHandDistanceToClosestBar: 1
-  drawHandDistanceLine: 1
-  hingeForce: 180
-  targetVelocity: 220
-  startupTangentSpeed: 2
-  startupAngularSpeed: 3
-  useAssistTorque: 1
-  assistTorqueAcceleration: 45
-  defaultStartupDirection: 1
-  releaseBoost: 1
-  jumpReleaseImpulse: 5
---- !u!114 &460284053510760708
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2972812932901283394}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5573e66c325da3c4a8eac335835c9859, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpimSwingBridge
-  playerController: {fileID: 8494436175874447162}
-  playerBody: {fileID: 7288184361111873154}
-  normalVisualRoot: {fileID: 2945185425123413951}
-  normalAnimator: {fileID: 1006131616448617749}
-  normalHandGrabPoint: {fileID: 5425976019076525229}
-  chimpRig: {fileID: 1893852829166208454}
-  chimpRigRoot: {fileID: 5321048388936900147}
-  chimpVisualRoot: {fileID: 524068350045455025}
-  rigRotationOffset: {x: 0, y: 90, z: 0}
-  hideNormalVisualWhileSwinging: 1
-  hideChimpVisual: 1
-  disableAnimatorWhileSwinging: 1
-  maxGrabDistance: 3.5
-  failedGrabTimeout: 0.35
-  releaseVelocityMultiplier: 1
-  drawHandDistanceLine: 1
-  warnIfHighlightedBarHasNoSwingable: 1
 --- !u!82 &7198634112472057422
 AudioSource:
   m_ObjectHideFlags: 0
@@ -608,8 +532,6 @@ MonoBehaviour:
   invincibilityDuration: 1
   disableControlsWhileInvincible: 1
   playerController: {fileID: 0}
-  chimpMovement: {fileID: 0}
-  handGrabSwing: {fileID: 0}
   bananaShooter: {fileID: 0}
   knockbackHorizontalForce: 7
   knockbackUpForce: 3
@@ -992,21 +914,6 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 3188285610614390016}
   m_SourcePrefab: {fileID: 100100000, guid: e95ec3654a5bca14487e67f83152b226, type: 3}
---- !u!4 &942384918583136264 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 2957186331571905254, guid: e95ec3654a5bca14487e67f83152b226, type: 3}
-  m_PrefabInstance: {fileID: 2602534521709441774}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &1765832230381946670 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -4855038362455329344, guid: e95ec3654a5bca14487e67f83152b226, type: 3}
-  m_PrefabInstance: {fileID: 2602534521709441774}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &2075716716722512992 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -5129492219665099122, guid: e95ec3654a5bca14487e67f83152b226, type: 3}
-  m_PrefabInstance: {fileID: 2602534521709441774}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &2563874365101036805 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: e95ec3654a5bca14487e67f83152b226, type: 3}
@@ -1039,151 +946,8 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!4 &3016722566905453535 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -8231592297152419535, guid: e95ec3654a5bca14487e67f83152b226, type: 3}
-  m_PrefabInstance: {fileID: 2602534521709441774}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &4629479744513855570 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 7215109751082050236, guid: e95ec3654a5bca14487e67f83152b226, type: 3}
-  m_PrefabInstance: {fileID: 2602534521709441774}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &5163740155614690678 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 7185287647361486744, guid: e95ec3654a5bca14487e67f83152b226, type: 3}
-  m_PrefabInstance: {fileID: 2602534521709441774}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &5409013325550421045 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 8002513554746324699, guid: e95ec3654a5bca14487e67f83152b226, type: 3}
-  m_PrefabInstance: {fileID: 2602534521709441774}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &8840123302168652653 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -2400310755862455933, guid: e95ec3654a5bca14487e67f83152b226, type: 3}
   m_PrefabInstance: {fileID: 2602534521709441774}
-  m_PrefabAsset: {fileID: 0}
---- !u!1001 &4223839425152822856
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 2522016266461355485}
-    m_Modifications:
-    - target: {fileID: 222886432404388371, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 8.17
-      objectReference: {fileID: 0}
-    - target: {fileID: 222886432404388371, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -1.45
-      objectReference: {fileID: 0}
-    - target: {fileID: 501196635612854746, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_Mesh
-      value: 
-      objectReference: {fileID: 492500776217551559, guid: 41c4437cb2f6be9449517755f809af87, type: 3}
-    - target: {fileID: 501196635612854746, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_Enabled
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 501196635612854746, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: 'm_Materials.Array.data[0]'
-      value: 
-      objectReference: {fileID: 2100000, guid: 861066d186c005c4690de08faa9360e8, type: 2}
-    - target: {fileID: 4457379419743988985, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_Name
-      value: chimp
-      objectReference: {fileID: 0}
-    - target: {fileID: 4457379419743988985, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 2.3473053
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 2.3473053
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 2.3473053
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0.22155397
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.7964083
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -0.023957212
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 90
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-      propertyPath: m_ConstrainProportionsScale
-      value: 1
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
---- !u!1 &524068350045455025 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 4457379419743988985, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-  m_PrefabInstance: {fileID: 4223839425152822856}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1893852829166208454 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 2366156209525107598, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-  m_PrefabInstance: {fileID: 4223839425152822856}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 524068350045455025}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 97b59ad3d37f9dd4e93e1085fa834b0d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ChimpMovement
---- !u!4 &5321048388936900147 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 8306395579697180795, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-  m_PrefabInstance: {fileID: 4223839425152822856}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &5425976019076525229 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 8201872841933456101, guid: 5bee6474d267d914d837e806b6fc03a4, type: 3}
-  m_PrefabInstance: {fileID: 4223839425152822856}
   m_PrefabAsset: {fileID: 0}
