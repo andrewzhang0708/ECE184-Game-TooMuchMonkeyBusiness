@@ -26,6 +26,7 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] private float maxRollSpeed = 25f;
     [SerializeField] private bool allowFlatRollStart = true;
     [SerializeField] private float flatRollStartSpeed = 7f;
+    [SerializeField] private bool rotateVisualWhileRolling;
     [SerializeField] private float rollVisualDegreesPerSpeed = 120f;
     [SerializeField] private float rollWallCheckDistance = 0.15f;
     [SerializeField] private float rollWallMinimumAngle = 80f;
@@ -397,6 +398,7 @@ public class PlayerController2D : MonoBehaviour
         rollHorizontalDirection = Mathf.Sign(horizontalDirection);
         rollSpeed = Mathf.Clamp(startingSpeed, rollStopSpeed, maxRollSpeed);
         rollVisualAngle = 0f;
+        UpdateFacing(rollHorizontalDirection);
         UpdateRollingFacing();
     }
 
@@ -580,7 +582,7 @@ public class PlayerController2D : MonoBehaviour
 
     private void UpdateRollingFacing()
     {
-        if (visualTransform != null)
+        if (rotateVisualWhileRolling && visualTransform != null)
         {
             Quaternion rollRotation = Quaternion.AngleAxis(rollVisualAngle, Vector3.forward);
             visualTransform.localRotation = rollRotation * rollingFacingRotation;
