@@ -32,6 +32,14 @@ public class PlayerHealth : MonoBehaviour
     [SerializeField] private float fallMultiplier = 2.5f;
     [SerializeField] private bool applyGravityWhileAscending = true;
 
+    [Header("Jump Stomp")]
+    [SerializeField] private bool enableJumpStomp = true;
+    [SerializeField] private float stompTopTolerance = 0.35f;
+    [SerializeField] private float minimumStompDownwardVelocity = -0.05f;
+    [SerializeField] private float stompFallMemoryDuration = 0.2f;
+    [SerializeField] private float stompBounceVelocity = 7f;
+    [SerializeField] private bool logStompDebug = true;
+
     [Header("Death")]
     [SerializeField] private float deathDelay = 1f;
     [SerializeField] private string startScreenSceneName = "StartScreen";
@@ -41,6 +49,8 @@ public class PlayerHealth : MonoBehaviour
     private float invincibleUntil;
     private Coroutine controlLockRoutine;
     private bool isDead;
+    private float lastDownwardVelocity;
+    private float lastDownwardTime = float.NegativeInfinity;
 
     public int CurrentLives => currentLives;
     public bool IsInvincible => Time.time < invincibleUntil;
@@ -63,6 +73,8 @@ public class PlayerHealth : MonoBehaviour
 
     private void FixedUpdate()
     {
+        UpdateStompFallMemory();
+
         if (!IsInvincible || currentLives <= 0 || isDead)
         {
             return;
@@ -79,12 +91,12 @@ public class PlayerHealth : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        TryTakeDamage(collision.collider);
+        TryTakeDamage(collision.collider, collision);
     }
 
     private void OnCollisionStay(Collision collision)
     {
-        TryTakeDamage(collision.collider);
+        TryTakeDamage(collision.collider, collision);
     }
 
     private void OnTriggerEnter(Collider other)
@@ -99,12 +111,29 @@ public class PlayerHealth : MonoBehaviour
 
     private void TryTakeDamage(Collider damageCollider)
     {
+        TryTakeDamage(damageCollider, null);
+    }
+
+    private void TryTakeDamage(Collider damageCollider, Collision collision)
+    {
         if (IsInvincible || currentLives <= 0 || isDead)
         {
             return;
         }
 
         if (!IsEnemyCollider(damageCollider))
+        {
+            return;
+        }
+
+        EnemyStompStun enemyStun = damageCollider.GetComponentInParent<EnemyStompStun>();
+        if (enemyStun != null && enemyStun.IsStunned)
+        {
+            TryStompEnemy(damageCollider, enemyStun, collision);
+            return;
+        }
+
+        if (TryStompEnemy(damageCollider, enemyStun, collision))
         {
             return;
         }
@@ -141,12 +170,175 @@ public class PlayerHealth : MonoBehaviour
             return true;
         }
 
-        if (!string.IsNullOrEmpty(enemyTag) && damageCollider.gameObject.tag == enemyTag)
+        if (
+            !string.IsNullOrEmpty(enemyTag) &&
+            damageCollider.GetComponentInParent<EnemyStompStun>() != null &&
+            damageCollider.GetComponentInParent<EnemyStompStun>().CompareTag(enemyTag)
+        )
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrEmpty(enemyTag) && damageCollider.CompareTag(enemyTag))
         {
             return true;
         }
 
         return (enemyLayer.value & (1 << damageCollider.gameObject.layer)) != 0;
+    }
+
+    private bool TryStompEnemy(Collider enemyCollider, EnemyStompStun enemyStun, Collision collision)
+    {
+        if (!enableJumpStomp || enemyStun == null)
+        {
+            return false;
+        }
+
+        if (!HasRecentStompFall())
+        {
+            LogStompDebug(
+                "not falling. current y velocity: " +
+                rb.linearVelocity.y.ToString("F2") +
+                ", recent downward velocity: " +
+                lastDownwardVelocity.ToString("F2"),
+                enemyStun
+            );
+            return false;
+        }
+
+        if (!TryGetBounds(GetComponentsInChildren<Collider>(), out Bounds playerBounds))
+        {
+            LogStompDebug("no player bounds", enemyStun);
+            return false;
+        }
+
+        if (!TryGetBounds(enemyStun.GetComponentsInChildren<Collider>(), out Bounds enemyBounds))
+        {
+            enemyBounds = enemyCollider.bounds;
+        }
+
+        bool hasTopContact = collision == null || HasTopStompContact(collision, enemyBounds);
+        bool playerIsAboveEnemy =
+            playerBounds.center.y > enemyBounds.center.y ||
+            playerBounds.min.y >= enemyBounds.center.y - stompTopTolerance;
+        if (!playerIsAboveEnemy)
+        {
+            LogStompDebug(
+                "player not above enemy. player center y: " +
+                playerBounds.center.y.ToString("F2") +
+                ", enemy center y: " +
+                enemyBounds.center.y.ToString("F2"),
+                enemyStun
+            );
+            return false;
+        }
+
+        if (!hasTopContact)
+        {
+            LogStompDebug("contact not on upper half of enemy", enemyStun);
+            return false;
+        }
+
+        bool overlapsEnemyX =
+            playerBounds.max.x >= enemyBounds.min.x &&
+            playerBounds.min.x <= enemyBounds.max.x;
+        bool overlapsEnemyZ =
+            playerBounds.max.z >= enemyBounds.min.z &&
+            playerBounds.min.z <= enemyBounds.max.z;
+        if (!overlapsEnemyX || !overlapsEnemyZ)
+        {
+            LogStompDebug("player bounds did not overlap enemy x/z bounds", enemyStun);
+            return false;
+        }
+
+        enemyStun.Stomp();
+        Debug.Log("Player stomped enemy: " + enemyStun.name, enemyStun);
+        BounceAfterStomp();
+        return true;
+    }
+
+    private bool HasTopStompContact(Collision collision, Bounds enemyBounds)
+    {
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            ContactPoint contact = collision.GetContact(i);
+            bool contactOnUpperHalf = contact.point.y >= enemyBounds.center.y - stompTopTolerance;
+
+            if (contactOnUpperHalf)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void LogStompDebug(string message, Object context)
+    {
+        if (logStompDebug)
+        {
+            Debug.Log("Stomp failed: " + message, context);
+        }
+    }
+
+    private void UpdateStompFallMemory()
+    {
+        if (rb == null)
+        {
+            return;
+        }
+
+        float verticalVelocity = rb.linearVelocity.y;
+        if (verticalVelocity <= minimumStompDownwardVelocity)
+        {
+            lastDownwardVelocity = verticalVelocity;
+            lastDownwardTime = Time.time;
+        }
+    }
+
+    private bool HasRecentStompFall()
+    {
+        if (rb.linearVelocity.y <= minimumStompDownwardVelocity)
+        {
+            return true;
+        }
+
+        return Time.time - lastDownwardTime <= stompFallMemoryDuration;
+    }
+
+    private static bool TryGetBounds(Collider[] colliders, out Bounds bounds)
+    {
+        bounds = new Bounds();
+        bool hasBounds = false;
+
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider targetCollider = colliders[i];
+            if (targetCollider == null || !targetCollider.enabled || targetCollider.isTrigger)
+            {
+                continue;
+            }
+
+            if (!hasBounds)
+            {
+                bounds = targetCollider.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(targetCollider.bounds);
+            }
+        }
+
+        return hasBounds;
+    }
+
+    private void BounceAfterStomp()
+    {
+        Vector3 velocity = rb.linearVelocity;
+        velocity.y = stompBounceVelocity;
+        velocity.z = 0f;
+        rb.linearVelocity = velocity;
     }
 
     private void ApplyKnockback(Vector3 damageSourcePosition)

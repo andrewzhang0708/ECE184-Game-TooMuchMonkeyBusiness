@@ -24,8 +24,11 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] private float rollUphillDeceleration = 18f;
     [SerializeField] private float rollStopSpeed = 0.15f;
     [SerializeField] private float maxRollSpeed = 25f;
+    [SerializeField] private bool allowFlatRollStart = true;
+    [SerializeField] private float flatRollStartSpeed = 7f;
     [SerializeField] private float rollVisualDegreesPerSpeed = 120f;
     [SerializeField] private float rollWallCheckDistance = 0.15f;
+    [SerializeField] private bool logRollingDebug = true;
 
     [Header("Gravity")]
     [SerializeField] private float fallMultiplier = 2.5f;
@@ -335,29 +338,71 @@ public class PlayerController2D : MonoBehaviour
 
     private void TryStartRolling()
     {
-        if (!isGrounded || !TryGetGroundNormal(out Vector3 groundNormal))
+        if (!isGrounded)
         {
+            LogRollingDebug("cannot start roll: not grounded");
+            return;
+        }
+
+        if (!TryGetGroundNormal(out Vector3 groundNormal))
+        {
+            LogRollingDebug("cannot start roll: no ground normal found");
             return;
         }
 
         float slopeAngle = Vector3.Angle(groundNormal, Vector3.up);
         if (slopeAngle < minimumRollSlopeAngle)
         {
+            if (!allowFlatRollStart)
+            {
+                LogRollingDebug(
+                    "cannot start roll: slope angle " +
+                    slopeAngle.ToString("F1") +
+                    " is below minimum " +
+                    minimumRollSlopeAngle.ToString("F1")
+                );
+                return;
+            }
+
+            StartRolling(
+                isFacingRight ? 1f : -1f,
+                Mathf.Max(flatRollStartSpeed, Mathf.Abs(rb.linearVelocity.x)),
+                "Starting flat roll"
+            );
             return;
         }
 
         Vector3 downhillDirection = Vector3.ProjectOnPlane(Physics.gravity, groundNormal).normalized;
         if (Mathf.Approximately(downhillDirection.x, 0f))
         {
+            LogRollingDebug("cannot start roll: downhill direction has no x component");
             return;
         }
 
+        StartRolling(
+            Mathf.Sign(downhillDirection.x),
+            Mathf.Max(0f, Vector3.Dot(rb.linearVelocity, downhillDirection)),
+            "Starting slope roll. Slope angle: " + slopeAngle.ToString("F1") + " degrees"
+        );
+    }
+
+    private void StartRolling(float horizontalDirection, float startingSpeed, string message)
+    {
+        LogRollingDebug(message);
         isRolling = true;
         rb.useGravity = true;
-        rollHorizontalDirection = Mathf.Sign(downhillDirection.x);
-        rollSpeed = Mathf.Max(0f, Vector3.Dot(rb.linearVelocity, downhillDirection));
+        rollHorizontalDirection = Mathf.Sign(horizontalDirection);
+        rollSpeed = Mathf.Clamp(startingSpeed, rollStopSpeed, maxRollSpeed);
         rollVisualAngle = 0f;
         UpdateRollingFacing();
+    }
+
+    private void LogRollingDebug(string message)
+    {
+        if (logRollingDebug)
+        {
+            Debug.Log("Rolling: " + message, this);
+        }
     }
 
     private void UpdateRolling()

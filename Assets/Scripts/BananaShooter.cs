@@ -16,6 +16,11 @@ public class BananaShooter : MonoBehaviour
     public float projectileLifetime = 4f;
     public float spawnOffset = 0.5f;
 
+    [Header("Audio")]
+    public AudioSource audioSource;
+    public AudioClip shootClip;
+    [Range(0f, 3f)] public float shootVolume = 1f;
+
     [Header("Arc / Gravity")]
     public bool useGravity = true;
 
@@ -32,6 +37,17 @@ public class BananaShooter : MonoBehaviour
     public Vector3 localFacingAxis = Vector3.forward;
     public bool forceWorldXDirection = true;
 
+    [Header("Projectile Hit Ignore")]
+    public string[] ignoredHitTags = { "Collectible" };
+    public LayerMask ignoredHitLayers;
+
+    [Header("Enemy Defeat")]
+    public string enemyTag = "Enemy";
+    public float enemyDefeatUpVelocity = 5f;
+    public float enemyDefeatHorizontalVelocity = 1.5f;
+    public float enemyDefeatFallMultiplier = 2.5f;
+    public float enemyDestroyDelay = 4f;
+
     private float nextShootTime = 0f;
 
     void Reset()
@@ -47,6 +63,16 @@ public class BananaShooter : MonoBehaviour
         if (playerController == null)
         {
             playerController = GetComponentInParent<PlayerController2D>();
+        }
+
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+        }
+
+        if (audioSource == null)
+        {
+            audioSource = GetComponentInParent<AudioSource>();
         }
     }
 
@@ -70,13 +96,14 @@ public class BananaShooter : MonoBehaviour
             return;
         }
 
-        Transform spawnTransform = firePoint != null ? firePoint : bananaTemplate.transform;
-        Vector3 shootDir = GetShootDirection(spawnTransform);
+        Vector3 spawnPosition = firePoint != null ? firePoint.position : transform.position;
+        Quaternion spawnRotation = bananaTemplate.transform.rotation;
+        Vector3 shootDir = GetShootDirection();
 
         GameObject projectile = Instantiate(
             bananaTemplate,
-            spawnTransform.position + shootDir * spawnOffset,
-            spawnTransform.rotation
+            spawnPosition + shootDir * spawnOffset,
+            spawnRotation
         );
 
         projectile.name = "Banana Projectile";
@@ -120,11 +147,37 @@ public class BananaShooter : MonoBehaviour
             hitDestroy = projectile.AddComponent<BananaProjectileHitDestroy>();
         }
         hitDestroy.ownerRoot = transform.root;
+        hitDestroy.ignoredTags = ignoredHitTags;
+        hitDestroy.ignoredLayers = ignoredHitLayers;
+        hitDestroy.enemyTag = enemyTag;
+        hitDestroy.enemyDefeatUpVelocity = enemyDefeatUpVelocity;
+        hitDestroy.enemyDefeatHorizontalVelocity = enemyDefeatHorizontalVelocity;
+        hitDestroy.enemyDefeatFallMultiplier = enemyDefeatFallMultiplier;
+        hitDestroy.enemyDestroyDelay = enemyDestroyDelay;
+
+        PlayShootSound();
 
         Destroy(projectile, projectileLifetime);
     }
 
-    Vector3 GetShootDirection(Transform spawnTransform)
+    void PlayShootSound()
+    {
+        if (shootClip == null)
+        {
+            return;
+        }
+
+        if (audioSource != null)
+        {
+            audioSource.PlayOneShot(shootClip, shootVolume);
+            return;
+        }
+
+        Vector3 soundPosition = firePoint != null ? firePoint.position : transform.position;
+        AudioSource.PlayClipAtPoint(shootClip, soundPosition, shootVolume);
+    }
+
+    Vector3 GetShootDirection()
     {
         Vector3 dir;
 
@@ -138,8 +191,8 @@ public class BananaShooter : MonoBehaviour
         }
         else
         {
-            // Fallback: use the banana/firePoint's forward direction.
-            dir = spawnTransform.forward;
+            // Fallback: use this shooter's forward direction.
+            dir = transform.forward;
         }
 
         // Make the launch mostly horizontal, then add a small upward component.
@@ -207,6 +260,13 @@ public class BananaProjectileGravity : MonoBehaviour
 public class BananaProjectileHitDestroy : MonoBehaviour
 {
     public Transform ownerRoot;
+    public string[] ignoredTags;
+    public LayerMask ignoredLayers;
+    public string enemyTag = "Enemy";
+    public float enemyDefeatUpVelocity = 5f;
+    public float enemyDefeatHorizontalVelocity = 1.5f;
+    public float enemyDefeatFallMultiplier = 2.5f;
+    public float enemyDestroyDelay = 4f;
 
     private bool hasHit;
 
@@ -232,7 +292,179 @@ public class BananaProjectileHitDestroy : MonoBehaviour
             return;
         }
 
+        if (ShouldIgnore(other))
+        {
+            return;
+        }
+
+        Transform enemyRoot = FindTaggedRoot(other.transform, enemyTag);
+        if (enemyRoot != null)
+        {
+            hasHit = true;
+            DefeatedEnemyFall.Defeat(
+                enemyRoot.gameObject,
+                transform.position,
+                enemyDefeatUpVelocity,
+                enemyDefeatHorizontalVelocity,
+                enemyDefeatFallMultiplier,
+                enemyDestroyDelay
+            );
+            Destroy(gameObject);
+            return;
+        }
+
         hasHit = true;
         Destroy(gameObject);
+    }
+
+    private Transform FindTaggedRoot(Transform target, string tagToFind)
+    {
+        if (target == null || string.IsNullOrEmpty(tagToFind))
+        {
+            return null;
+        }
+
+        Transform current = target;
+        while (current != null)
+        {
+            if (current.CompareTag(tagToFind))
+            {
+                return current;
+            }
+
+            current = current.parent;
+        }
+
+        return null;
+    }
+
+    private bool ShouldIgnore(Collider other)
+    {
+        if ((ignoredLayers.value & (1 << other.gameObject.layer)) != 0)
+        {
+            return true;
+        }
+
+        if (ignoredTags == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < ignoredTags.Length; i++)
+        {
+            string ignoredTag = ignoredTags[i];
+            if (!string.IsNullOrEmpty(ignoredTag) && other.CompareTag(ignoredTag))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+public class DefeatedEnemyFall : MonoBehaviour
+{
+    private Rigidbody rb;
+    private float fallMultiplier = 2.5f;
+
+    public static void Defeat(
+        GameObject enemyRoot,
+        Vector3 hitPosition,
+        float upVelocity,
+        float horizontalVelocity,
+        float fallMultiplier,
+        float destroyDelay
+    )
+    {
+        if (enemyRoot == null || enemyRoot.GetComponent<DefeatedEnemyFall>() != null)
+        {
+            return;
+        }
+
+        EnemyStompStun stompStun = enemyRoot.GetComponentInChildren<EnemyStompStun>();
+        if (stompStun != null)
+        {
+            stompStun.CancelStunForDefeat();
+        }
+
+        MonoBehaviour[] scripts = enemyRoot.GetComponentsInChildren<MonoBehaviour>();
+        for (int i = 0; i < scripts.Length; i++)
+        {
+            if (scripts[i] != null && !(scripts[i] is DefeatedEnemyFall))
+            {
+                scripts[i].enabled = false;
+            }
+        }
+
+        Collider[] colliders = enemyRoot.GetComponentsInChildren<Collider>();
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            if (colliders[i] != null)
+            {
+                colliders[i].enabled = false;
+            }
+        }
+
+        AudioSource[] audioSources = enemyRoot.GetComponentsInChildren<AudioSource>();
+        for (int i = 0; i < audioSources.Length; i++)
+        {
+            if (audioSources[i] != null)
+            {
+                audioSources[i].Stop();
+                audioSources[i].enabled = false;
+            }
+        }
+
+        Rigidbody enemyRigidbody = enemyRoot.GetComponent<Rigidbody>();
+        if (enemyRigidbody == null)
+        {
+            enemyRigidbody = enemyRoot.AddComponent<Rigidbody>();
+        }
+
+        enemyRigidbody.isKinematic = false;
+        enemyRigidbody.useGravity = true;
+        enemyRigidbody.constraints = RigidbodyConstraints.FreezePositionZ | RigidbodyConstraints.FreezeRotation;
+
+        float horizontalDirection = Mathf.Sign(enemyRoot.transform.position.x - hitPosition.x);
+        if (Mathf.Approximately(horizontalDirection, 0f))
+        {
+            horizontalDirection = 1f;
+        }
+
+        enemyRigidbody.linearVelocity = new Vector3(
+            horizontalDirection * horizontalVelocity,
+            upVelocity,
+            0f
+        );
+
+        DefeatedEnemyFall fall = enemyRoot.AddComponent<DefeatedEnemyFall>();
+        fall.rb = enemyRigidbody;
+        fall.fallMultiplier = fallMultiplier;
+
+        Destroy(enemyRoot, destroyDelay);
+    }
+
+    private void Awake()
+    {
+        if (rb == null)
+        {
+            rb = GetComponent<Rigidbody>();
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        if (rb == null)
+        {
+            return;
+        }
+
+        Vector3 velocity = rb.linearVelocity;
+        if (velocity.y < 0f)
+        {
+            velocity.y += Physics.gravity.y * (fallMultiplier - 1f) * Time.fixedDeltaTime;
+            rb.linearVelocity = velocity;
+        }
     }
 }
