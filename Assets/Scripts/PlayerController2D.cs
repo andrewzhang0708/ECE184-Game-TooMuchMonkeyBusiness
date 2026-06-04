@@ -28,6 +28,7 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] private float flatRollStartSpeed = 7f;
     [SerializeField] private float rollVisualDegreesPerSpeed = 120f;
     [SerializeField] private float rollWallCheckDistance = 0.15f;
+    [SerializeField] private float rollWallMinimumAngle = 80f;
     [SerializeField] private bool logRollingDebug = true;
 
     [Header("Gravity")]
@@ -87,6 +88,8 @@ public class PlayerController2D : MonoBehaviour
     private float nextGroundCheckDebugTime;
     private float ignoreGroundUntil;
     private Collider lastLoggedGroundCollider;
+    private Vector3 lastGroundNormal = Vector3.up;
+    private float lastGroundNormalTime = float.NegativeInfinity;
 
     private Quaternion facingRightRotation;
     private Quaternion facingLeftRotation;
@@ -520,7 +523,7 @@ public class PlayerController2D : MonoBehaviour
             }
 
             float wallAngle = Vector3.Angle(hit.normal, Vector3.up);
-            if (wallAngle >= VerticalWallAngle)
+            if (wallAngle >= rollWallMinimumAngle)
             {
                 return true;
             }
@@ -857,6 +860,8 @@ public class PlayerController2D : MonoBehaviour
                 isGrounded = true;
                 lastGroundedTime = Time.time;
                 lastGroundContactTime = Time.time;
+                lastGroundNormal = contact.normal;
+                lastGroundNormalTime = Time.time;
                 LogGroundCollider(hitCollider);
                 return;
             }
@@ -892,7 +897,18 @@ public class PlayerController2D : MonoBehaviour
             }
         }
 
-        return TryRaycastGroundNormal(rayOrigin, slopeCheckDistance, out groundNormal);
+        if (TryRaycastGroundNormal(rayOrigin, slopeCheckDistance, out groundNormal))
+        {
+            return true;
+        }
+
+        if (Time.time - lastGroundNormalTime <= groundGraceDuration)
+        {
+            groundNormal = lastGroundNormal;
+            return true;
+        }
+
+        return false;
     }
 
     private bool TryRaycastGroundNormal(
