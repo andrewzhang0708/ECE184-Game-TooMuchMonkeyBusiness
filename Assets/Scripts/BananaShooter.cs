@@ -27,6 +27,10 @@ public class BananaShooter : MonoBehaviour
 
     [Header("Direction")]
     public bool useFacingReference = true;
+    public PlayerController2D playerController;
+    [Tooltip("Local axis on facingReference that points out of the character. Try (1,0,0) if Forward does not match the model.")]
+    public Vector3 localFacingAxis = Vector3.forward;
+    public bool forceWorldXDirection = true;
 
     private float nextShootTime = 0f;
 
@@ -35,15 +39,25 @@ public class BananaShooter : MonoBehaviour
         bananaTemplate = gameObject;
         firePoint = transform;
         facingReference = transform.root;
+        playerController = GetComponentInParent<PlayerController2D>();
+    }
+
+    void Awake()
+    {
+        if (playerController == null)
+        {
+            playerController = GetComponentInParent<PlayerController2D>();
+        }
     }
 
     void Update()
     {
         if (Keyboard.current == null) return;
 
-        if (Keyboard.current.cKey.wasPressedThisFrame && Time.time >= nextShootTime)
+        if (Keyboard.current.spaceKey.wasPressedThisFrame && Time.time >= nextShootTime)
         {
             Shoot();
+            Debug.Log("Banana shot!");
             nextShootTime = Time.time + cooldown;
         }
     }
@@ -100,6 +114,13 @@ public class BananaShooter : MonoBehaviour
         }
         gravity.extraDownwardAcceleration = extraDownwardAcceleration;
 
+        BananaProjectileHitDestroy hitDestroy = projectile.GetComponent<BananaProjectileHitDestroy>();
+        if (hitDestroy == null)
+        {
+            hitDestroy = projectile.AddComponent<BananaProjectileHitDestroy>();
+        }
+        hitDestroy.ownerRoot = transform.root;
+
         Destroy(projectile, projectileLifetime);
     }
 
@@ -110,7 +131,10 @@ public class BananaShooter : MonoBehaviour
         if (useFacingReference && facingReference != null)
         {
             // For your 3D platformer, this usually means "the way the monkey/player is facing."
-            dir = facingReference.forward;
+            Vector3 facingAxis = localFacingAxis.sqrMagnitude > 0f
+                ? localFacingAxis.normalized
+                : Vector3.forward;
+            dir = facingReference.TransformDirection(facingAxis);
         }
         else
         {
@@ -120,6 +144,28 @@ public class BananaShooter : MonoBehaviour
 
         // Make the launch mostly horizontal, then add a small upward component.
         dir.y = 0f;
+
+        if (forceWorldXDirection)
+        {
+            if (playerController != null)
+            {
+                return playerController.IsFacingRight ? Vector3.right : Vector3.left;
+            }
+
+            float xDirection = dir.x;
+
+            if (Mathf.Approximately(xDirection, 0f) && facingReference != null)
+            {
+                xDirection = facingReference.forward.x;
+            }
+
+            if (Mathf.Approximately(xDirection, 0f) && facingReference != null)
+            {
+                xDirection = facingReference.right.x;
+            }
+
+            dir = xDirection >= 0f ? Vector3.right : Vector3.left;
+        }
 
         if (dir.sqrMagnitude < 0.001f)
         {
@@ -155,5 +201,38 @@ public class BananaProjectileGravity : MonoBehaviour
         if (rb == null) return;
 
         rb.AddForce(Vector3.down * extraDownwardAcceleration, ForceMode.Acceleration);
+    }
+}
+
+public class BananaProjectileHitDestroy : MonoBehaviour
+{
+    public Transform ownerRoot;
+
+    private bool hasHit;
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        TryDestroy(collision.collider);
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        TryDestroy(other);
+    }
+
+    private void TryDestroy(Collider other)
+    {
+        if (hasHit || other == null)
+        {
+            return;
+        }
+
+        if (ownerRoot != null && other.transform.root == ownerRoot)
+        {
+            return;
+        }
+
+        hasHit = true;
+        Destroy(gameObject);
     }
 }

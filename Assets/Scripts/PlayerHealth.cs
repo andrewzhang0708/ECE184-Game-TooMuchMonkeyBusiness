@@ -25,7 +25,12 @@ public class PlayerHealth : MonoBehaviour
 
     [Header("Knockback")]
     [SerializeField] private float knockbackHorizontalForce = 7f;
+    [SerializeField] private float knockbackHorizontalDeceleration = 7f;
     [SerializeField] private float knockbackUpForce = 3f;
+
+    [Header("Hit Gravity")]
+    [SerializeField] private float fallMultiplier = 2.5f;
+    [SerializeField] private bool applyGravityWhileAscending = true;
 
     [Header("Death")]
     [SerializeField] private float deathDelay = 1f;
@@ -54,6 +59,22 @@ public class PlayerHealth : MonoBehaviour
         {
             bananaShooter = GetComponent<BananaShooter>();
         }
+    }
+
+    private void FixedUpdate()
+    {
+        if (!IsInvincible || currentLives <= 0 || isDead)
+        {
+            return;
+        }
+
+        if (playerController != null && playerController.enabled)
+        {
+            return;
+        }
+
+        UpdateKnockbackHorizontalDecay();
+        ApplyExtraGravity();
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -142,6 +163,29 @@ public class PlayerHealth : MonoBehaviour
         velocity.y = knockbackUpForce;
         velocity.z = 0f;
         rb.linearVelocity = velocity;
+    }
+
+    private void UpdateKnockbackHorizontalDecay()
+    {
+        Vector3 velocity = rb.linearVelocity;
+        velocity.x = Mathf.MoveTowards(
+            velocity.x,
+            0f,
+            knockbackHorizontalDeceleration * Time.fixedDeltaTime
+        );
+        rb.linearVelocity = velocity;
+    }
+
+    private void ApplyExtraGravity()
+    {
+        Vector3 velocity = rb.linearVelocity;
+        bool applyWhileAscending = applyGravityWhileAscending && velocity.y > 0f;
+
+        if (velocity.y < 0f || applyWhileAscending)
+        {
+            velocity.y += Physics.gravity.y * (fallMultiplier - 1f) * Time.fixedDeltaTime;
+            rb.linearVelocity = velocity;
+        }
     }
 
     private void LockControlsDuringInvincibility()

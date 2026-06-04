@@ -49,6 +49,8 @@ public class PlayerController2D : MonoBehaviour
     [Header("Visual Facing")]
     [Tooltip("Drag MonkeyVisual here, not the Player root.")]
     [SerializeField] private Transform visualTransform;
+    [SerializeField] private GameObject leftHandBanana;
+    [SerializeField] private GameObject rightHandBanana;
 
     [Header("Animation")]
     [Tooltip("Drag the Animator on MonkeyVisual / monkey model here.")]
@@ -86,12 +88,15 @@ public class PlayerController2D : MonoBehaviour
     private Quaternion facingRightRotation;
     private Quaternion facingLeftRotation;
     private Quaternion rollingFacingRotation;
+    private bool isFacingRight = true;
     private Animator cachedAnimator;
     private bool animatorHasIsGrounded;
     private bool animatorHasIsRolling;
     private bool animatorHasSpeed;
     private bool animatorHasRollSpeed;
     private bool animatorHasVerticalSpeed;
+
+    public bool IsFacingRight => isFacingRight;
 
     private void Awake()
     {
@@ -116,6 +121,8 @@ public class PlayerController2D : MonoBehaviour
             rollingEulerAngles.y = 90f;
             rollingFacingRotation = Quaternion.Euler(rollingEulerAngles);
         }
+
+        UpdateHandBananaVisibility();
     }
 
     private void Update()
@@ -302,14 +309,28 @@ public class PlayerController2D : MonoBehaviour
             return;
         }
 
-        if (visualTransform == null)
+        isFacingRight = horizontal > 0f;
+        if (visualTransform != null)
         {
-            return;
+            visualTransform.localRotation = isFacingRight
+                ? facingRightRotation
+                : facingLeftRotation;
         }
 
-        visualTransform.localRotation = horizontal > 0f
-            ? facingRightRotation
-            : facingLeftRotation;
+        UpdateHandBananaVisibility();
+    }
+
+    private void UpdateHandBananaVisibility()
+    {
+        if (leftHandBanana != null)
+        {
+            leftHandBanana.SetActive(!isFacingRight);
+        }
+
+        if (rightHandBanana != null)
+        {
+            rightHandBanana.SetActive(isFacingRight);
+        }
     }
 
     private void TryStartRolling()
