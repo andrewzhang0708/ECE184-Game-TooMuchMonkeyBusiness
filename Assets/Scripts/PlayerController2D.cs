@@ -19,17 +19,18 @@ public class PlayerController2D : MonoBehaviour
     [Header("Rolling")]
     [SerializeField] private bool enableRolling;
     [SerializeField] private float minimumRollSlopeAngle = 3f;
+    [Tooltip("Acceleration while rolling downhill.")]
     [SerializeField] private float rollSlopeAcceleration = 12f;
+    [Tooltip("Speed lost per second while rolling on flat ground.")]
     [SerializeField] private float rollFlatDeceleration = 8f;
+    [Tooltip("Speed lost per second while rolling uphill.")]
     [SerializeField] private float rollUphillDeceleration = 18f;
     [SerializeField] private float rollStopSpeed = 0.15f;
     [SerializeField] private float maxRollSpeed = 25f;
-    [SerializeField] private bool allowFlatRollStart = true;
-    [SerializeField] private float flatRollStartSpeed = 7f;
+    [Tooltip("How long rolling may continue across a collider seam without a valid ground normal.")]
+    [SerializeField, Min(0f)] private float rollGroundGraceDuration = 0.15f;
     [SerializeField] private bool rotateVisualWhileRolling;
     [SerializeField] private float rollVisualDegreesPerSpeed = 120f;
-    [SerializeField] private float rollWallCheckDistance = 0.15f;
-    [SerializeField] private float rollWallMinimumAngle = 80f;
     [SerializeField] private bool logRollingDebug = true;
 
     [Header("Gravity")]
@@ -72,7 +73,6 @@ public class PlayerController2D : MonoBehaviour
     private Collider[] ownColliders;
     private readonly Collider[] groundHits = new Collider[8];
     private readonly RaycastHit[] slopeHits = new RaycastHit[8];
-    private readonly RaycastHit[] wallHits = new RaycastHit[8];
 
     private const float VerticalWallAngle = 89.9f;
 
@@ -86,6 +86,8 @@ public class PlayerController2D : MonoBehaviour
     private float rollSpeed;
     private float rollHorizontalDirection;
     private float rollVisualAngle;
+    private float lastValidRollGroundTime = float.NegativeInfinity;
+    private Vector3 lastValidRollGroundNormal = Vector3.up;
     private float lastGroundedTime = float.NegativeInfinity;
     private float lastGroundContactTime = float.NegativeInfinity;
     private float nextGroundCheckDebugTime;
@@ -167,6 +169,7 @@ public class PlayerController2D : MonoBehaviour
         bool jumpReleased = keyboard.wKey.wasReleasedThisFrame || keyboard.upArrowKey.wasReleasedThisFrame;
         bool jumpHeld = keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed;
         bool rollPressed = keyboard.sKey.wasPressedThisFrame || keyboard.downArrowKey.wasPressedThisFrame;
+        float horizontalInput = GetHorizontalInput(keyboard);
 
         if (jumpReleased && !jumpHeld)
         {
@@ -175,7 +178,7 @@ public class PlayerController2D : MonoBehaviour
 
         if (enableRolling && rollPressed && !isRolling)
         {
-            TryStartRolling();
+            TryStartRolling(horizontalInput);
         }
         else if (jumpPressed && isGrounded && !isRolling)
         {
@@ -240,19 +243,7 @@ public class PlayerController2D : MonoBehaviour
             return;
         }
 
-        float horizontal = 0f;
-
-        if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
-        {
-            // Do not change
-            horizontal -= 2f;
-        }
-
-        if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
-        {
-            // Do not change
-            horizontal += 2f;
-        }
+        float horizontal = GetHorizontalInput(keyboard);
 
         Vector3 velocity = rb.linearVelocity;
         bool isIdle = Mathf.Approximately(horizontal, 0f);
@@ -318,6 +309,23 @@ public class PlayerController2D : MonoBehaviour
         UpdateFacing(horizontal);
     }
 
+    private static float GetHorizontalInput(Keyboard keyboard)
+    {
+        float horizontal = 0f;
+
+        if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)
+        {
+            horizontal -= 2f;
+        }
+
+        if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed)
+        {
+            horizontal += 2f;
+        }
+
+        return horizontal;
+    }
+
     private void UpdateFacing(float horizontal)
     {
         if (Mathf.Approximately(horizontal, 0f))
@@ -374,7 +382,7 @@ public class PlayerController2D : MonoBehaviour
         }
     }
 
-    private void TryStartRolling()
+    private void TryStartRolling(float horizontalInput)
     {
         if (!isGrounded)
         {
@@ -382,7 +390,11 @@ public class PlayerController2D : MonoBehaviour
             return;
         }
 
-        if (!TryGetGroundNormal(out Vector3 groundNormal))
+        float probeDirection = !Mathf.Approximately(horizontalInput, 0f)
+            ? Mathf.Sign(horizontalInput)
+            : Mathf.Sign(rb.linearVelocity.x);
+
+        if (!TryGetGroundNormal(probeDirection, out Vector3 groundNormal))
         {
             LogRollingDebug("cannot start roll: no ground normal found");
             return;
@@ -391,21 +403,11 @@ public class PlayerController2D : MonoBehaviour
         float slopeAngle = Vector3.Angle(groundNormal, Vector3.up);
         if (slopeAngle < minimumRollSlopeAngle)
         {
-            if (!allowFlatRollStart)
-            {
-                LogRollingDebug(
-                    "cannot start roll: slope angle " +
-                    slopeAngle.ToString("F1") +
-                    " is below minimum " +
-                    minimumRollSlopeAngle.ToString("F1")
-                );
-                return;
-            }
-
-            StartRolling(
-                isFacingRight ? 1f : -1f,
-                Mathf.Max(flatRollStartSpeed, Mathf.Abs(rb.linearVelocity.x)),
-                "Starting flat roll"
+            LogRollingDebug(
+                "cannot start roll: slope angle " +
+                slopeAngle.ToString("F1") +
+                " is below minimum " +
+                minimumRollSlopeAngle.ToString("F1")
             );
             return;
         }
@@ -417,9 +419,14 @@ public class PlayerController2D : MonoBehaviour
             return;
         }
 
+        lastValidRollGroundNormal = groundNormal;
+        float inheritedSpeed = Mathf.Max(
+            Mathf.Abs(Vector3.Dot(rb.linearVelocity, downhillDirection)),
+            Mathf.Abs(rb.linearVelocity.x)
+        );
         StartRolling(
             Mathf.Sign(downhillDirection.x),
-            Mathf.Max(0f, Vector3.Dot(rb.linearVelocity, downhillDirection)),
+            inheritedSpeed,
             "Starting slope roll. Slope angle: " + slopeAngle.ToString("F1") + " degrees"
         );
     }
@@ -432,6 +439,7 @@ public class PlayerController2D : MonoBehaviour
         rollHorizontalDirection = Mathf.Sign(horizontalDirection);
         rollSpeed = Mathf.Clamp(startingSpeed, rollStopSpeed, maxRollSpeed);
         rollVisualAngle = 0f;
+        lastValidRollGroundTime = Time.time;
         UpdateFacing(rollHorizontalDirection);
         UpdateRollingFacing();
     }
@@ -448,21 +456,18 @@ public class PlayerController2D : MonoBehaviour
     {
         rb.useGravity = true;
 
-        if (IsRollingIntoWall())
+        if (TryGetGroundNormal(rollHorizontalDirection, out Vector3 groundNormal))
         {
-            StopRolling(true);
-            return;
+            lastValidRollGroundNormal = groundNormal;
+            lastValidRollGroundTime = Time.time;
         }
-
-        if (!isGrounded)
+        else if (Time.time - lastValidRollGroundTime <= rollGroundGraceDuration)
         {
-            StopRolling(false);
-            return;
+            groundNormal = lastValidRollGroundNormal;
         }
-
-        if (!TryGetGroundNormal(rollHorizontalDirection, out Vector3 groundNormal))
+        else
         {
-            StopRolling(false);
+            UpdateAirborneRoll();
             return;
         }
 
@@ -507,7 +512,7 @@ public class PlayerController2D : MonoBehaviour
 
         if (groundStickForce > 0f)
         {
-            rb.AddForce(Vector3.down * groundStickForce, ForceMode.Acceleration);
+            rb.AddForce(-groundNormal * groundStickForce, ForceMode.Acceleration);
         }
 
         rollVisualAngle -=
@@ -518,82 +523,23 @@ public class PlayerController2D : MonoBehaviour
         UpdateRollingFacing();
     }
 
-    private bool IsRollingIntoWall()
+    private void UpdateAirborneRoll()
     {
-        if (Mathf.Approximately(rollHorizontalDirection, 0f))
-        {
-            return false;
-        }
+        Vector3 velocity = rb.linearVelocity;
+        velocity.z = 0f;
+        rb.linearVelocity = velocity;
 
-        Bounds playerBounds = GetPlayerBounds();
-        float radius = Mathf.Min(playerBounds.extents.x, playerBounds.extents.y);
-        radius = Mathf.Max(radius, 0.05f);
-        float halfHeight = Mathf.Max(playerBounds.extents.y, radius);
-        Vector3 center = playerBounds.center;
-        Vector3 top = center + Vector3.up * (halfHeight - radius);
-        Vector3 bottom = center - Vector3.up * (halfHeight - radius);
-        Vector3 direction = Vector3.right * rollHorizontalDirection;
-
-        int hitCount = Physics.CapsuleCastNonAlloc(
-            top,
-            bottom,
-            radius,
-            direction,
-            wallHits,
-            rollWallCheckDistance,
-            groundLayer,
-            QueryTriggerInteraction.Ignore
+        rollSpeed = Mathf.Clamp(
+            Mathf.Abs(velocity.x),
+            rollStopSpeed,
+            maxRollSpeed
         );
-
-        for (int i = 0; i < hitCount; i++)
-        {
-            RaycastHit hit = wallHits[i];
-
-            if (
-                hit.collider == null ||
-                IsOwnCollider(hit.collider) ||
-                IsIgnoredOneWayPlatform(hit.collider)
-            )
-            {
-                continue;
-            }
-
-            float wallAngle = Vector3.Angle(hit.normal, Vector3.up);
-            if (wallAngle >= rollWallMinimumAngle)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private Bounds GetPlayerBounds()
-    {
-        Bounds playerBounds = new Bounds(transform.position, Vector3.zero);
-        bool foundCollider = false;
-
-        for (int i = 0; i < ownColliders.Length; i++)
-        {
-            Collider ownCollider = ownColliders[i];
-
-            if (ownCollider == null || !ownCollider.enabled || ownCollider.isTrigger)
-            {
-                continue;
-            }
-
-            if (!foundCollider)
-            {
-                playerBounds = ownCollider.bounds;
-                foundCollider = true;
-            }
-            else
-            {
-                playerBounds.Encapsulate(ownCollider.bounds);
-            }
-        }
-
-        return playerBounds;
+        rollVisualAngle -=
+            rollHorizontalDirection *
+            rollSpeed *
+            rollVisualDegreesPerSpeed *
+            Time.fixedDeltaTime;
+        UpdateRollingFacing();
     }
 
     private void StopRolling(bool stopCompletely)
