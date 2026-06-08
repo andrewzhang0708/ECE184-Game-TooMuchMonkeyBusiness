@@ -54,6 +54,8 @@ public class PlayerController2D : MonoBehaviour
     [Header("Visual Facing")]
     [Tooltip("Drag MonkeyVisual here, not the Player root.")]
     [SerializeField] private Transform visualTransform;
+    [Tooltip("Seconds needed to complete a 180-degree turn. Set to 0 for an instant turn.")]
+    [SerializeField, Min(0f)] private float turnDuration = 0.15f;
     [SerializeField] private GameObject leftHandBanana;
     [SerializeField] private GameObject rightHandBanana;
 
@@ -93,8 +95,9 @@ public class PlayerController2D : MonoBehaviour
     private float lastGroundNormalTime = float.NegativeInfinity;
 
     private Quaternion facingRightRotation;
-    private Quaternion facingLeftRotation;
     private Quaternion rollingFacingRotation;
+    private float visualFacingAngle;
+    private float targetVisualFacingAngle;
     private bool isFacingRight = true;
     private Animator cachedAnimator;
     private bool animatorHasIsGrounded;
@@ -122,7 +125,8 @@ public class PlayerController2D : MonoBehaviour
         if (visualTransform != null)
         {
             facingRightRotation = visualTransform.localRotation;
-            facingLeftRotation = facingRightRotation * Quaternion.Euler(0f, 180f, 0f);
+            visualFacingAngle = 0f;
+            targetVisualFacingAngle = 0f;
 
             Vector3 rollingEulerAngles = facingRightRotation.eulerAngles;
             rollingEulerAngles.y = 90f;
@@ -130,6 +134,11 @@ public class PlayerController2D : MonoBehaviour
         }
 
         UpdateHandBananaVisibility();
+    }
+
+    private void LateUpdate()
+    {
+        UpdateVisualTurn();
     }
 
     private void Update()
@@ -316,15 +325,40 @@ public class PlayerController2D : MonoBehaviour
             return;
         }
 
-        isFacingRight = horizontal > 0f;
-        if (visualTransform != null)
+        bool shouldFaceRight = horizontal > 0f;
+        if (shouldFaceRight == isFacingRight)
         {
-            visualTransform.localRotation = isFacingRight
-                ? facingRightRotation
-                : facingLeftRotation;
+            return;
         }
 
+        isFacingRight = shouldFaceRight;
+        targetVisualFacingAngle = isFacingRight ? 0f : 180f;
         UpdateHandBananaVisibility();
+    }
+
+    private void UpdateVisualTurn()
+    {
+        if (visualTransform == null || (isRolling && rotateVisualWhileRolling))
+        {
+            return;
+        }
+
+        if (turnDuration <= 0f)
+        {
+            visualFacingAngle = targetVisualFacingAngle;
+            visualTransform.localRotation =
+                facingRightRotation * Quaternion.Euler(0f, visualFacingAngle, 0f);
+            return;
+        }
+
+        float turnSpeed = 180f / turnDuration;
+        visualFacingAngle = Mathf.MoveTowards(
+            visualFacingAngle,
+            targetVisualFacingAngle,
+            turnSpeed * Time.deltaTime
+        );
+        visualTransform.localRotation =
+            facingRightRotation * Quaternion.Euler(0f, visualFacingAngle, 0f);
     }
 
     private void UpdateHandBananaVisibility()

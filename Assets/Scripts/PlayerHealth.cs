@@ -55,6 +55,11 @@ public class PlayerHealth : MonoBehaviour
     public int CurrentLives => currentLives;
     public bool IsInvincible => Time.time < invincibleUntil;
 
+    public void SetCurrentLives(int lives)
+    {
+        currentLives = Mathf.Max(0, lives);
+    }
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
