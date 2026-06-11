@@ -109,6 +109,7 @@ public class PlayerController2D : MonoBehaviour
     private bool animatorHasVerticalSpeed;
 
     public bool IsFacingRight => isFacingRight;
+    public bool IsRolling => isRolling;
 
     private void Awake()
     {
@@ -165,9 +166,15 @@ public class PlayerController2D : MonoBehaviour
 
         CheckGround();
 
-        bool jumpPressed = keyboard.wKey.wasPressedThisFrame || keyboard.upArrowKey.wasPressedThisFrame;
-        bool jumpReleased = keyboard.wKey.wasReleasedThisFrame || keyboard.upArrowKey.wasReleasedThisFrame;
-        bool jumpHeld = keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed;
+        bool jumpPressed =
+            keyboard.wKey.wasPressedThisFrame ||
+            keyboard.upArrowKey.wasPressedThisFrame;
+        bool jumpReleased =
+            keyboard.wKey.wasReleasedThisFrame ||
+            keyboard.upArrowKey.wasReleasedThisFrame;
+        bool jumpHeld =
+            keyboard.wKey.isPressed ||
+            keyboard.upArrowKey.isPressed;
         bool rollPressed = keyboard.sKey.wasPressedThisFrame || keyboard.downArrowKey.wasPressedThisFrame;
         float horizontalInput = GetHorizontalInput(keyboard);
 

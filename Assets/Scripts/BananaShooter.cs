@@ -48,6 +48,10 @@ public class BananaShooter : MonoBehaviour
     public float enemyDefeatFallMultiplier = 2.5f;
     public float enemyDestroyDelay = 4f;
 
+    [Header("Enemy Hit Audio")]
+    public AudioClip enemyHitClip;
+    [Range(0f, 3f)] public float enemyHitVolume = 1f;
+
     private float nextShootTime = 0f;
 
     void Reset()
@@ -154,6 +158,8 @@ public class BananaShooter : MonoBehaviour
         hitDestroy.enemyDefeatHorizontalVelocity = enemyDefeatHorizontalVelocity;
         hitDestroy.enemyDefeatFallMultiplier = enemyDefeatFallMultiplier;
         hitDestroy.enemyDestroyDelay = enemyDestroyDelay;
+        hitDestroy.enemyHitClip = enemyHitClip;
+        hitDestroy.enemyHitVolume = enemyHitVolume;
 
         PlayShootSound();
 
@@ -175,6 +181,14 @@ public class BananaShooter : MonoBehaviour
 
         Vector3 soundPosition = firePoint != null ? firePoint.position : transform.position;
         AudioSource.PlayClipAtPoint(shootClip, soundPosition, shootVolume);
+    }
+
+    public void PlayEnemyHitFeedback(Vector3 hitPosition)
+    {
+        if (enemyHitClip != null)
+        {
+            AudioSource.PlayClipAtPoint(enemyHitClip, hitPosition, enemyHitVolume);
+        }
     }
 
     Vector3 GetShootDirection()
@@ -267,6 +281,8 @@ public class BananaProjectileHitDestroy : MonoBehaviour
     public float enemyDefeatHorizontalVelocity = 1.5f;
     public float enemyDefeatFallMultiplier = 2.5f;
     public float enemyDestroyDelay = 4f;
+    public AudioClip enemyHitClip;
+    public float enemyHitVolume = 1f;
 
     private bool hasHit;
 
@@ -297,10 +313,26 @@ public class BananaProjectileHitDestroy : MonoBehaviour
             return;
         }
 
+        Booboo booboo = other.GetComponentInParent<Booboo>();
+        if (booboo != null)
+        {
+            hasHit = true;
+            PlayEnemyHitSound();
+            booboo.Hit(
+                other,
+                transform.position,
+                enemyDefeatUpVelocity,
+                enemyDestroyDelay
+            );
+            Destroy(gameObject);
+            return;
+        }
+
         Transform enemyRoot = FindTaggedRoot(other.transform, enemyTag);
         if (enemyRoot != null)
         {
             hasHit = true;
+            PlayEnemyHitSound();
             DefeatedEnemyFall.Defeat(
                 enemyRoot.gameObject,
                 transform.position,
@@ -360,6 +392,14 @@ public class BananaProjectileHitDestroy : MonoBehaviour
         }
 
         return false;
+    }
+
+    private void PlayEnemyHitSound()
+    {
+        if (enemyHitClip != null)
+        {
+            AudioSource.PlayClipAtPoint(enemyHitClip, transform.position, enemyHitVolume);
+        }
     }
 }
 

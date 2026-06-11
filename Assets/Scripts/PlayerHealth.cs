@@ -28,6 +28,12 @@ public class PlayerHealth : MonoBehaviour
     [SerializeField] private float knockbackHorizontalDeceleration = 7f;
     [SerializeField] private float knockbackUpForce = 3f;
 
+    [Header("Roll Attack")]
+    [SerializeField] private float rollEnemyUpVelocity = 5f;
+    [SerializeField] private float rollEnemyHorizontalVelocity = 4f;
+    [SerializeField] private float rollEnemyFallMultiplier = 2.5f;
+    [SerializeField] private float rollEnemyDestroyDelay = 4f;
+
     [Header("Hit Gravity")]
     [SerializeField] private float fallMultiplier = 2.5f;
     [SerializeField] private bool applyGravityWhileAscending = true;
@@ -72,7 +78,7 @@ public class PlayerHealth : MonoBehaviour
 
         if (bananaShooter == null)
         {
-            bananaShooter = GetComponent<BananaShooter>();
+            bananaShooter = GetComponentInChildren<BananaShooter>(true);
         }
     }
 
@@ -131,6 +137,11 @@ public class PlayerHealth : MonoBehaviour
             return;
         }
 
+        if (TryRollHitEnemy(damageCollider))
+        {
+            return;
+        }
+
         EnemyStompStun enemyStun = damageCollider.GetComponentInParent<EnemyStompStun>();
         if (enemyStun != null && enemyStun.IsStunned)
         {
@@ -184,12 +195,94 @@ public class PlayerHealth : MonoBehaviour
             return true;
         }
 
-        if (!string.IsNullOrEmpty(enemyTag) && damageCollider.CompareTag(enemyTag))
+        if (FindTaggedRoot(damageCollider.transform, enemyTag) != null)
         {
             return true;
         }
 
         return (enemyLayer.value & (1 << damageCollider.gameObject.layer)) != 0;
+    }
+
+    private bool TryRollHitEnemy(Collider enemyCollider)
+    {
+        if (playerController == null || !playerController.IsRolling)
+        {
+            return false;
+        }
+
+        if (bananaShooter != null)
+        {
+            bananaShooter.PlayEnemyHitFeedback(enemyCollider.ClosestPoint(transform.position));
+        }
+
+        Booboo booboo = enemyCollider.GetComponentInParent<Booboo>();
+        if (booboo != null)
+        {
+            booboo.Hit(
+                enemyCollider,
+                transform.position,
+                rollEnemyUpVelocity,
+                rollEnemyDestroyDelay
+            );
+            return true;
+        }
+
+        Transform enemyRoot = FindTaggedRoot(enemyCollider.transform, enemyTag);
+        if (enemyRoot == null)
+        {
+            SimpleHoppingEnemy hoppingEnemy =
+                enemyCollider.GetComponentInParent<SimpleHoppingEnemy>();
+            if (hoppingEnemy != null)
+            {
+                enemyRoot = hoppingEnemy.transform;
+            }
+        }
+
+        if (enemyRoot == null)
+        {
+            RollingSphereEnemy rollingEnemy =
+                enemyCollider.GetComponentInParent<RollingSphereEnemy>();
+            if (rollingEnemy != null)
+            {
+                enemyRoot = rollingEnemy.transform;
+            }
+        }
+
+        if (enemyRoot == null)
+        {
+            return false;
+        }
+
+        DefeatedEnemyFall.Defeat(
+            enemyRoot.gameObject,
+            transform.position,
+            rollEnemyUpVelocity,
+            rollEnemyHorizontalVelocity,
+            rollEnemyFallMultiplier,
+            rollEnemyDestroyDelay
+        );
+        return true;
+    }
+
+    private static Transform FindTaggedRoot(Transform target, string tagToFind)
+    {
+        if (target == null || string.IsNullOrEmpty(tagToFind))
+        {
+            return null;
+        }
+
+        Transform current = target;
+        while (current != null)
+        {
+            if (current.CompareTag(tagToFind))
+            {
+                return current;
+            }
+
+            current = current.parent;
+        }
+
+        return null;
     }
 
     private bool TryStompEnemy(Collider enemyCollider, EnemyStompStun enemyStun, Collision collision)
