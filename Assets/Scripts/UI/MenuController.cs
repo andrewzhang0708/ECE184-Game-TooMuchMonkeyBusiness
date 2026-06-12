@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 public class MenuController : MonoBehaviour
 {
     private static bool openLevelPanelOnStart;
+    private static bool openWinPanelOnStart;
 
     [Header("Panels")]
     public GameObject mainMenuPanel;
@@ -11,6 +12,7 @@ public class MenuController : MonoBehaviour
     public GameObject creditPanel;
     public GameObject levelPanel;
     public GameObject introPanel;
+    public GameObject winPanel;
 
     [Header("Scenes")]
     // public string levelSelectSceneName = "LevelSelect";
@@ -23,6 +25,13 @@ public class MenuController : MonoBehaviour
 
     private void Start()
     {
+        if (openWinPanelOnStart)
+        {
+            openWinPanelOnStart = false;
+            OpenWinPanel();
+            return;
+        }
+
         if (openLevelPanelOnStart)
         {
             openLevelPanelOnStart = false;
@@ -36,6 +45,11 @@ public class MenuController : MonoBehaviour
     public static void OpenLevelPanelOnNextStart()
     {
         openLevelPanelOnStart = true;
+    }
+
+    public static void OpenWinPanelOnNextStart()
+    {
+        openWinPanelOnStart = true;
     }
 
     private void StartLevel(string sceneName)
@@ -77,6 +91,7 @@ public class MenuController : MonoBehaviour
         creditPanel.SetActive(false);
         levelPanel.SetActive(false);
         introPanel.SetActive(true);
+        SetPanelActive(winPanel, false);
     }
 
     public void StartChooseLevel()
@@ -86,6 +101,7 @@ public class MenuController : MonoBehaviour
         creditPanel.SetActive(false);
         levelPanel.SetActive(true);
         introPanel.SetActive(false);
+        SetPanelActive(winPanel, false);
     }
 
     public void OpenSettings()
@@ -95,6 +111,7 @@ public class MenuController : MonoBehaviour
         creditPanel.SetActive(false);
         levelPanel.SetActive(false);
         introPanel.SetActive(false);
+        SetPanelActive(winPanel, false);
     }
 
     public void OpenCredit()
@@ -104,6 +121,22 @@ public class MenuController : MonoBehaviour
         creditPanel.SetActive(true);
         levelPanel.SetActive(false);
         introPanel.SetActive(false);
+        SetPanelActive(winPanel, false);
+    }
+
+    public void OpenWinPanel()
+    {
+        if (winPanel == null)
+        {
+            winPanel = FindPanel("Win Panel", "Win");
+        }
+
+        mainMenuPanel.SetActive(false);
+        settingsPanel.SetActive(false);
+        creditPanel.SetActive(false);
+        levelPanel.SetActive(false);
+        introPanel.SetActive(false);
+        SetPanelActive(winPanel, true);
     }
 
     public void BackToMainMenu()
@@ -113,6 +146,35 @@ public class MenuController : MonoBehaviour
         creditPanel.SetActive(false);
         levelPanel.SetActive(false);
         introPanel.SetActive(false);
+        SetPanelActive(winPanel, false);
+    }
+
+    private static void SetPanelActive(GameObject panel, bool active)
+    {
+        if (panel != null)
+        {
+            panel.SetActive(active);
+        }
+    }
+
+    private static GameObject FindPanel(params string[] panelNames)
+    {
+        foreach (GameObject rootObject in SceneManager.GetActiveScene().GetRootGameObjects())
+        {
+            foreach (Transform child in rootObject.GetComponentsInChildren<Transform>(true))
+            {
+                foreach (string panelName in panelNames)
+                {
+                    if (child.name == panelName)
+                    {
+                        return child.gameObject;
+                    }
+                }
+            }
+        }
+
+        Debug.LogWarning("MenuController could not find the Win Panel.");
+        return null;
     }
 
     public void QuitGame()

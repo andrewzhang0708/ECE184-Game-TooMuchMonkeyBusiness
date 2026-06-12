@@ -1,8 +1,15 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class BirdCarry : MonoBehaviour
 {
+    private enum FlightDirection
+    {
+        Right,
+        Left
+    }
+
     private enum CarryState
     {
         Idle,
@@ -43,7 +50,9 @@ public class BirdCarry : MonoBehaviour
     };
 
     [Header("Carry")]
-    [SerializeField, Min(0f)] private float maxRightDistance = 4f;
+    [SerializeField] private FlightDirection initialFlightDirection = FlightDirection.Right;
+    [FormerlySerializedAs("maxRightDistance")]
+    [SerializeField, Min(0f)] private float maxFlightDistance = 4f;
     [SerializeField] private float topContactMinimumNormalY = 0.5f;
     [SerializeField] private bool moveRidersWithBird = true;
 
@@ -59,7 +68,8 @@ public class BirdCarry : MonoBehaviour
     [SerializeField] private Vector3 rightWingFlapAxis = Vector3.forward;
     [SerializeField] private bool mirrorRightWing = true;
 
-    private readonly HashSet<Transform> riders = new HashSet<Transform>();
+    private readonly HashSet<PlayerController2D> riders =
+        new HashSet<PlayerController2D>();
 
     private Vector3 startPosition;
     private Vector3 previousPosition;
@@ -67,6 +77,8 @@ public class BirdCarry : MonoBehaviour
     private Quaternion leftWingStartRotation;
     private Quaternion rightWingStartRotation;
     private int direction = 1;
+    private int initialDirection = 1;
+    private int facingDirection = 1;
     private float bobOffset;
     private float flapOffset;
     private CarryState currentState = CarryState.Idle;
@@ -78,6 +90,9 @@ public class BirdCarry : MonoBehaviour
         previousPosition = startPosition;
         bobOffset = Random.value * Mathf.PI * 2f;
         flapOffset = Random.value * Mathf.PI * 2f;
+        initialDirection = initialFlightDirection == FlightDirection.Right ? 1 : -1;
+        direction = initialDirection;
+        facingDirection = initialDirection;
 
         if (visualTransform == null)
         {
@@ -99,12 +114,18 @@ public class BirdCarry : MonoBehaviour
         UpdateFacing();
     }
 
-    private void Update()
+    private void FixedUpdate()
     {
         previousPosition = transform.position;
 
         UpdateMovement();
-        MoveRiders(transform.position - previousPosition);
+        Vector3 movementDelta = transform.position - previousPosition;
+        UpdateFacingFromMovement(movementDelta.x);
+        MoveRiders(movementDelta);
+    }
+
+    private void Update()
+    {
         UpdateWingFlap();
     }
 
@@ -127,7 +148,7 @@ public class BirdCarry : MonoBehaviour
             return;
         }
 
-        riders.Remove(player.transform);
+        riders.Remove(player);
 
         if (riders.Count == 0 && currentState == CarryState.Fly)
         {
@@ -163,16 +184,24 @@ public class BirdCarry : MonoBehaviour
 
         if (!isStandingOnBird)
         {
-            riders.Remove(player.transform);
+            riders.Remove(player);
             return;
         }
 
-        riders.Add(player.transform);
+        riders.Add(player);
         TriggerFly();
     }
 
     private void TriggerFly()
     {
+        if (currentState == CarryState.Idle)
+        {
+            initialDirection = initialFlightDirection == FlightDirection.Right ? 1 : -1;
+            direction = initialDirection;
+            facingDirection = initialDirection;
+            UpdateFacing();
+        }
+
         currentState = CarryState.Fly;
         stopAtStartWhenReached = false;
     }
@@ -186,10 +215,14 @@ public class BirdCarry : MonoBehaviour
         if (currentState == CarryState.Fly)
         {
             float halfDistance = Mathf.Max(0f, settings.patrolDistance) * 0.5f;
-            float minX = startPosition.x - halfDistance;
-            float maxX = startPosition.x + maxRightDistance;
+            float minX = initialDirection > 0
+                ? startPosition.x - halfDistance
+                : startPosition.x - maxFlightDistance;
+            float maxX = initialDirection > 0
+                ? startPosition.x + maxFlightDistance
+                : startPosition.x + halfDistance;
 
-            position.x += direction * settings.horizontalSpeed * Time.deltaTime;
+            position.x += direction * settings.horizontalSpeed * Time.fixedDeltaTime;
 
             if (stopAtStartWhenReached && CrossedStart(previousX, position.x))
             {
@@ -201,13 +234,11 @@ public class BirdCarry : MonoBehaviour
             {
                 position.x = maxX;
                 direction = -1;
-                UpdateFacing();
             }
             else if (position.x <= minX)
             {
                 position.x = minX;
                 direction = 1;
-                UpdateFacing();
             }
         }
 
@@ -249,11 +280,21 @@ public class BirdCarry : MonoBehaviour
             return;
         }
 
-        foreach (Transform rider in riders)
+        foreach (PlayerController2D rider in riders)
         {
-            if (rider != null)
+            if (rider == null)
             {
-                rider.position += delta;
+                continue;
+            }
+
+            Rigidbody riderBody = rider.GetComponent<Rigidbody>();
+            if (riderBody != null)
+            {
+                riderBody.position += delta;
+            }
+            else
+            {
+                rider.transform.position += delta;
             }
         }
     }
@@ -265,9 +306,26 @@ public class BirdCarry : MonoBehaviour
             return;
         }
 
-        visualTransform.localRotation = direction > 0
+        visualTransform.localRotation = facingDirection == initialDirection
             ? startVisualRotation
             : startVisualRotation * Quaternion.Euler(turnRotationEuler);
+    }
+
+    private void UpdateFacingFromMovement(float horizontalMovement)
+    {
+        if (Mathf.Approximately(horizontalMovement, 0f))
+        {
+            return;
+        }
+
+        int newFacingDirection = horizontalMovement > 0f ? 1 : -1;
+        if (newFacingDirection == facingDirection)
+        {
+            return;
+        }
+
+        facingDirection = newFacingDirection;
+        UpdateFacing();
     }
 
     private void UpdateWingFlap()

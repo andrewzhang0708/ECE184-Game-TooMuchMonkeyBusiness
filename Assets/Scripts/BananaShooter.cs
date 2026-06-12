@@ -377,6 +377,13 @@ public class BananaProjectileHitDestroy : MonoBehaviour
             return true;
         }
 
+        // Collectibles must never consume a banana. Keep this independent of the
+        // serialized array because existing scene objects may have an empty value.
+        if (FindTaggedRoot(other.transform, "Collectible") != null)
+        {
+            return true;
+        }
+
         if (ignoredTags == null)
         {
             return false;
@@ -385,7 +392,8 @@ public class BananaProjectileHitDestroy : MonoBehaviour
         for (int i = 0; i < ignoredTags.Length; i++)
         {
             string ignoredTag = ignoredTags[i];
-            if (!string.IsNullOrEmpty(ignoredTag) && other.CompareTag(ignoredTag))
+            if (!string.IsNullOrEmpty(ignoredTag) &&
+                FindTaggedRoot(other.transform, ignoredTag) != null)
             {
                 return true;
             }

@@ -80,6 +80,7 @@ public class PausePanelController : MonoBehaviour
     {
         Time.timeScale = 1f;
         isPaused = false;
+        CoinProgress.DiscardRun();
         MenuController.OpenLevelPanelOnNextStart();
         SceneManager.LoadScene(startScreenSceneName);
     }

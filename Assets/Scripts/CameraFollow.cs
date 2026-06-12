@@ -25,7 +25,11 @@ public class CameraFollow : MonoBehaviour
     private void Awake()
     {
         cameraComponent = GetComponent<Camera>();
-        SetAreaBounds(initialBoundary1, initialBoundary2);
+    }
+
+    private void Start()
+    {
+        SetInitialBoundsFromPlayerPosition();
     }
 
     private void LateUpdate()
@@ -61,6 +65,41 @@ public class CameraFollow : MonoBehaviour
         position.x = ClampCameraX(position.x);
         transform.position = position;
         velocity.x = 0f;
+    }
+
+    private void SetInitialBoundsFromPlayerPosition()
+    {
+        if (target == null)
+        {
+            SetAreaBounds(initialBoundary1, initialBoundary2);
+            return;
+        }
+
+        Transform nearestLowerExit = null;
+        Transform nearestUpperExit = null;
+        float playerZ = target.position.z;
+        float nearestLowerDistance = float.PositiveInfinity;
+        float nearestUpperDistance = float.PositiveInfinity;
+
+        foreach (GameObject exit in GameObject.FindGameObjectsWithTag("Exit"))
+        {
+            float zDifference = exit.transform.position.z - playerZ;
+
+            if (zDifference < 0f && -zDifference < nearestLowerDistance)
+            {
+                nearestLowerDistance = -zDifference;
+                nearestLowerExit = exit.transform;
+            }
+            else if (zDifference > 0f && zDifference < nearestUpperDistance)
+            {
+                nearestUpperDistance = zDifference;
+                nearestUpperExit = exit.transform;
+            }
+        }
+
+        initialBoundary1 = nearestUpperExit;
+        initialBoundary2 = nearestLowerExit;
+        SetAreaBounds(initialBoundary1, initialBoundary2);
     }
 
     private float ClampCameraX(float cameraX)

@@ -57,7 +57,8 @@ public class WinObject : MonoBehaviour
         yield return new WaitForSecondsRealtime(winDelay);
 
         Time.timeScale = 1f;
-        MenuController.OpenLevelPanelOnNextStart();
+        CoinProgress.CommitRun();
+        MenuController.OpenWinPanelOnNextStart();
         SceneManager.LoadScene(startScreenSceneName);
     }
 }

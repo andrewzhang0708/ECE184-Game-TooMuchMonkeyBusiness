@@ -543,7 +543,7 @@ public class PlayerHealth : MonoBehaviour
         yield return new WaitForSecondsRealtime(deathDelay);
 
         Time.timeScale = 1f;
-        MenuController.OpenLevelPanelOnNextStart();
+        CoinProgress.DiscardRun();
         SceneManager.LoadScene(startScreenSceneName);
     }
 }

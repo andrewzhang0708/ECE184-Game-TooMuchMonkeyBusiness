@@ -1,5 +1,7 @@
 using System.Collections;
+using System.Text;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Cage : MonoBehaviour
 {
@@ -41,6 +43,11 @@ public class Cage : MonoBehaviour
     [SerializeField] private string animalTriggerMethod = "TriggerFly";
     [SerializeField] private Animator animalAnimator;
     [SerializeField] private string animalAnimatorTrigger;
+
+    [Header("Star Reward")]
+    [Tooltip("Unique save ID for this cage. Leave empty to generate one from its scene hierarchy.")]
+    [SerializeField] private string achievementId;
+    [SerializeField, Min(0)] private int starReward = 1;
 
     private Quaternion topClosedRotation;
     private Quaternion topClosedWorldRotation;
@@ -183,6 +190,7 @@ public class Cage : MonoBehaviour
         }
 
         yield return OpenTop();
+        AwardStar();
 
         PlaySinkSound();
 
@@ -334,6 +342,39 @@ public class Cage : MonoBehaviour
         }
 
         animalToFree.SendMessage(animalTriggerMethod, SendMessageOptions.DontRequireReceiver);
+    }
+
+    private void AwardStar()
+    {
+        string cageAchievementId = string.IsNullOrWhiteSpace(achievementId)
+            ? BuildAutomaticAchievementId()
+            : achievementId.Trim();
+
+        if (StarProgress.AwardAchievement(cageAchievementId, starReward))
+        {
+            Debug.Log(
+                "Cage opened for the first time. Awarded " + starReward +
+                " star(s). Total stars: " + StarProgress.TotalStars,
+                this
+            );
+        }
+    }
+
+    private string BuildAutomaticAchievementId()
+    {
+        StringBuilder hierarchyPath = new StringBuilder();
+        Transform current = transform;
+
+        while (current != null)
+        {
+            hierarchyPath.Insert(
+                0,
+                "/" + current.name + "[" + current.GetSiblingIndex() + "]"
+            );
+            current = current.parent;
+        }
+
+        return SceneManager.GetActiveScene().name + ".Cage" + hierarchyPath;
     }
 }
 

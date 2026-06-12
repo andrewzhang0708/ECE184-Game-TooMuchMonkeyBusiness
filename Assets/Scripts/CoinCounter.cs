@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class CoinCounter : MonoBehaviour
 {
@@ -8,8 +9,9 @@ public class CoinCounter : MonoBehaviour
     [Header("HUD")]
     [SerializeField] private TMP_Text coinText;
     [SerializeField] private string label = "Coins: ";
+    [SerializeField] private string startScreenSceneName = "StartScreen";
 
-    public int CoinCount { get; private set; }
+    public int CoinCount => CoinProgress.CurrentCoins;
 
     private void Awake()
     {
@@ -21,6 +23,22 @@ public class CoinCounter : MonoBehaviour
         }
 
         Instance = this;
+
+        if (coinText == null)
+        {
+            coinText = GetComponent<TMP_Text>();
+        }
+
+        if (SceneManager.GetActiveScene().name != startScreenSceneName)
+        {
+            CoinProgress.BeginRun();
+        }
+
+        UpdateHud();
+    }
+
+    private void OnEnable()
+    {
         UpdateHud();
     }
 
@@ -34,7 +52,7 @@ public class CoinCounter : MonoBehaviour
 
     public void AddCoins(int amount)
     {
-        CoinCount += amount;
+        CoinProgress.AddCoins(amount);
         UpdateHud();
     }
 
