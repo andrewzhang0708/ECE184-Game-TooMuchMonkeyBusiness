@@ -15,21 +15,30 @@ public class CoinCounter : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Debug.LogError("Only one CoinCounter should exist in the scene.", this);
-            enabled = false;
-            return;
-        }
-
-        Instance = this;
-
         if (coinText == null)
         {
             coinText = GetComponent<TMP_Text>();
         }
 
-        if (SceneManager.GetActiveScene().name != startScreenSceneName)
+        if (
+            coinText != null &&
+            coinText.GetComponentInParent<StarCounter>() != null
+        )
+        {
+            enabled = false;
+            return;
+        }
+
+        bool isPrimaryCounter = Instance == null;
+        if (isPrimaryCounter)
+        {
+            Instance = this;
+        }
+
+        if (
+            isPrimaryCounter &&
+            SceneManager.GetActiveScene().name != startScreenSceneName
+        )
         {
             CoinProgress.BeginRun();
         }
@@ -66,7 +75,8 @@ public class CoinCounter : MonoBehaviour
     {
         if (coinText != null)
         {
-            coinText.text = label + CoinCount;
+            int displayedCoins = Mathf.Max(0, CoinCount);
+            coinText.text = label + displayedCoins;
         }
     }
 

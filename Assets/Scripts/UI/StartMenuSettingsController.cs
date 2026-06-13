@@ -41,6 +41,17 @@ public class StartMenuSettingsController : MonoBehaviour
         StarProgress.ResetProgress();
         PowerUpProgress.ResetProgress();
 
+        DoubleJumpPurchaseController[] purchaseControllers =
+            FindObjectsByType<DoubleJumpPurchaseController>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None
+            );
+
+        foreach (DoubleJumpPurchaseController purchaseController in purchaseControllers)
+        {
+            purchaseController.Refresh();
+        }
+
         LevelStarGate[] levelGates = FindObjectsByType<LevelStarGate>(
             FindObjectsInactive.Include,
             FindObjectsSortMode.None

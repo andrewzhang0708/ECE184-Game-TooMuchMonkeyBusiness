@@ -32,6 +32,7 @@ public class MenuController : MonoBehaviour
 
     private void Start()
     {
+        CoinProgress.DiscardRun();
         SetupAudioSliders();
 
         if (openCreditPanelOnStart)

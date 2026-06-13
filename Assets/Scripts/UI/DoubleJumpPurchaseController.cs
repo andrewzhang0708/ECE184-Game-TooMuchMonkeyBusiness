@@ -79,9 +79,14 @@ public class DoubleJumpPurchaseController : MonoBehaviour
     {
         bool purchased = PowerUpProgress.HasDoubleJump;
 
-        if (hideWhenPurchased != null)
+        GameObject purchaseDisplay = hideWhenPurchased != null
+            ? hideWhenPurchased
+            : purchaseButton != null
+                ? purchaseButton.gameObject
+                : null;
+        if (purchaseDisplay != null)
         {
-            hideWhenPurchased.SetActive(!purchased);
+            purchaseDisplay.SetActive(!purchased);
         }
 
         if (priceText != null)

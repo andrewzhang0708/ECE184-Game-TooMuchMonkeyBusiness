@@ -570,6 +570,7 @@ public class PlayerHealth : MonoBehaviour
 
         Time.timeScale = 1f;
         CoinProgress.DiscardRun();
+        MenuController.OpenLevelPanelOnNextStart();
         SceneManager.LoadScene(startScreenSceneName);
     }
 }
