@@ -6,6 +6,7 @@ public class MenuController : MonoBehaviour
 {
     private static bool openLevelPanelOnStart;
     private static bool openWinPanelOnStart;
+    private static bool openCreditPanelOnStart;
 
     [Header("Panels")]
     public GameObject mainMenuPanel;
@@ -32,6 +33,13 @@ public class MenuController : MonoBehaviour
     private void Start()
     {
         SetupAudioSliders();
+
+        if (openCreditPanelOnStart)
+        {
+            openCreditPanelOnStart = false;
+            OpenCredit();
+            return;
+        }
 
         if (openWinPanelOnStart)
         {
@@ -105,6 +113,11 @@ public class MenuController : MonoBehaviour
     public static void OpenWinPanelOnNextStart()
     {
         openWinPanelOnStart = true;
+    }
+
+    public static void OpenCreditPanelOnNextStart()
+    {
+        openCreditPanelOnStart = true;
     }
 
     private void StartLevel(string sceneName)

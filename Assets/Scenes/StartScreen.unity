@@ -856,7 +856,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aec0f4e99af44314b95743910e206b90, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DoubleJumpPurchaseController
-  price: 0
+  price: 50
   purchaseButton: {fileID: 174910394}
   priceText: {fileID: 0}
   statusText: {fileID: 0}

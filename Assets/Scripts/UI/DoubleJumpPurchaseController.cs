@@ -62,6 +62,11 @@ public class DoubleJumpPurchaseController : MonoBehaviour
                 statusText.text = notEnoughCoinsText;
             }
 
+            Debug.LogWarning(
+                "Double Jump purchase failed. Saved coins: " +
+                CoinProgress.SavedCoins + ", price: " + price + ".",
+                this
+            );
             RefreshButtonState();
             return;
         }
@@ -98,9 +103,7 @@ public class DoubleJumpPurchaseController : MonoBehaviour
     {
         if (purchaseButton != null)
         {
-            purchaseButton.interactable =
-                !PowerUpProgress.HasDoubleJump &&
-                CoinProgress.SavedCoins >= price;
+            purchaseButton.interactable = !PowerUpProgress.HasDoubleJump;
         }
     }
 
