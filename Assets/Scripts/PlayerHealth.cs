@@ -14,6 +14,11 @@ public class PlayerHealth : MonoBehaviour
     [Tooltip("Optional. Leave as Nothing to ignore layer checks.")]
     [SerializeField] private LayerMask enemyLayer;
 
+    [Header("Enemy Attack Audio")]
+    [SerializeField] private AudioClip enemyAttackClip;
+    [Tooltip("Values above 1 use additional gain and may cause distortion.")]
+    [SerializeField, Range(0f, 10f)] private float enemyAttackVolume = 1f;
+
     [Header("Invincibility")]
     [SerializeField] private float invincibilityDuration = 1f;
 
@@ -64,6 +69,18 @@ public class PlayerHealth : MonoBehaviour
     public void SetCurrentLives(int lives)
     {
         currentLives = Mathf.Max(0, lives);
+    }
+
+    public void TakeFatalDamage(float delayOverride = -1f)
+    {
+        if (isDead)
+        {
+            return;
+        }
+
+        currentLives = 0;
+        Debug.Log("Player took fatal damage.");
+        StartCoroutine(DeathRoutine(delayOverride));
     }
 
     private void Awake()
@@ -156,6 +173,12 @@ public class PlayerHealth : MonoBehaviour
 
         currentLives = Mathf.Max(0, currentLives - 1);
         invincibleUntil = Time.time + invincibilityDuration;
+
+        AudioGainFilter.PlayClipAtPoint(
+            enemyAttackClip,
+            damageCollider.transform.position,
+            enemyAttackVolume
+        );
 
         ApplyKnockback(damageCollider.transform.position);
         LockControlsDuringInvincibility();
@@ -530,7 +553,7 @@ public class PlayerHealth : MonoBehaviour
         }
     }
 
-    private IEnumerator DeathRoutine()
+    private IEnumerator DeathRoutine(float delayOverride = -1f)
     {
         isDead = true;
 
@@ -542,7 +565,8 @@ public class PlayerHealth : MonoBehaviour
 
         SetControlScriptsEnabled(false);
 
-        yield return new WaitForSecondsRealtime(deathDelay);
+        float delay = delayOverride >= 0f ? delayOverride : deathDelay;
+        yield return new WaitForSecondsRealtime(delay);
 
         Time.timeScale = 1f;
         CoinProgress.DiscardRun();

@@ -11,6 +11,8 @@ public class DoubleJumpPurchaseController : MonoBehaviour
     [Header("Display")]
     [SerializeField] private TMP_Text priceText;
     [SerializeField] private TMP_Text statusText;
+    [Tooltip("Optional. This object is hidden after Double Jump has been purchased.")]
+    [SerializeField] private GameObject hideWhenPurchased;
     [SerializeField] private string pricePrefix = "BUY DOUBLE JUMP - ";
     [SerializeField] private string coinSuffix = " COINS";
     [SerializeField] private string purchasedText = "PURCHASED";
@@ -71,6 +73,11 @@ public class DoubleJumpPurchaseController : MonoBehaviour
     public void Refresh()
     {
         bool purchased = PowerUpProgress.HasDoubleJump;
+
+        if (hideWhenPurchased != null)
+        {
+            hideWhenPurchased.SetActive(!purchased);
+        }
 
         if (priceText != null)
         {

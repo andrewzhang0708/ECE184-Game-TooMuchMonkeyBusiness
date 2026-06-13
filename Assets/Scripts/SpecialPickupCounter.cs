@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class SpecialPickupCounter : MonoBehaviour
 {
@@ -20,6 +21,26 @@ public class SpecialPickupCounter : MonoBehaviour
 
     public int CurrentCount => currentCount;
     public int RequiredCount => requiredCount;
+
+    public static SpecialPickupCounter CreateRuntimeFallback()
+    {
+        GameObject counterObject = new GameObject("Special Pickup Counter");
+        SpecialPickupCounter counter =
+            counterObject.AddComponent<SpecialPickupCounter>();
+        counter.achievementId =
+            "CollectSpecials." + SceneManager.GetActiveScene().name;
+        counter.currentCount = StarProgress.HasAchievement(counter.achievementId)
+            ? counter.requiredCount
+            : 0;
+        counter.UpdateHud();
+
+        Debug.LogWarning(
+            "No SpecialPickupCounter was configured in the scene. " +
+            "A runtime counter was created, but no HUD text will be shown."
+        );
+
+        return counter;
+    }
 
     private void Awake()
     {

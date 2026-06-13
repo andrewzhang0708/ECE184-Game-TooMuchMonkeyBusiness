@@ -58,7 +58,7 @@ public class WinObject : MonoBehaviour
 
         Time.timeScale = 1f;
         CoinProgress.CommitRun();
-        MenuController.OpenWinPanelOnNextStart();
+        MenuController.OpenLevelPanelOnNextStart();
         SceneManager.LoadScene(startScreenSceneName);
     }
 }

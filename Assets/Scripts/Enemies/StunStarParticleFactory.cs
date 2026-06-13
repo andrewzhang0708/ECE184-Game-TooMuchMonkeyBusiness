@@ -44,7 +44,7 @@ public static class StunStarParticleFactory
         main.simulationSpace = ParticleSystemSimulationSpace.Local;
         main.startLifetime = new ParticleSystem.MinMaxCurve(0.8f, 1.25f);
         main.startSpeed = new ParticleSystem.MinMaxCurve(0.08f, 0.22f);
-        main.startSize = new ParticleSystem.MinMaxCurve(0.22f, 0.34f);
+        main.startSize = new ParticleSystem.MinMaxCurve(1.27f, 2.76f);
         main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
         main.startColor = new ParticleSystem.MinMaxGradient(
             new Color(1f, 0.72f, 0.05f, 1f),
@@ -58,7 +58,7 @@ public static class StunStarParticleFactory
         ParticleSystem.ShapeModule shape = particles.shape;
         shape.enabled = true;
         shape.shapeType = ParticleSystemShapeType.Circle;
-        shape.radius = 0.65f;
+        shape.radius = 3.51f;
         shape.radiusThickness = 1f;
 
         ParticleSystem.VelocityOverLifetimeModule velocity = particles.velocityOverLifetime;

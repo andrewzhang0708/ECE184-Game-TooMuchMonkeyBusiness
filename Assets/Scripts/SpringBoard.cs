@@ -21,7 +21,7 @@ public class SpringBoard : MonoBehaviour
     [Header("Sound")]
     [SerializeField] private AudioSource audioSource;
     [SerializeField] private AudioClip triggerSound;
-    [SerializeField, Range(0.1f, 3f)] private float soundPlaybackSpeed = 3f;
+    [SerializeField, Range(0.1f, 3f)] private float soundPlaybackSpeed = 1f;
 
     private Vector3 platformStartPosition;
     private Vector3 platformUpPosition;
@@ -69,11 +69,36 @@ public class SpringBoard : MonoBehaviour
 
     private void PlayTriggerSound()
     {
-        if (audioSource != null && triggerSound != null)
+        if (triggerSound == null)
         {
-            audioSource.pitch = soundPlaybackSpeed;
-            audioSource.PlayOneShot(triggerSound);
+            return;
         }
+
+        GameObject audioObject = new GameObject("Spring Board Audio");
+        audioObject.transform.position = transform.position;
+
+        AudioSource source = audioObject.AddComponent<AudioSource>();
+        source.clip = triggerSound;
+        source.pitch = soundPlaybackSpeed;
+
+        if (audioSource != null)
+        {
+            source.outputAudioMixerGroup = audioSource.outputAudioMixerGroup;
+            source.volume = audioSource.volume;
+            source.spatialBlend = audioSource.spatialBlend;
+            source.minDistance = audioSource.minDistance;
+            source.maxDistance = audioSource.maxDistance;
+            source.rolloffMode = audioSource.rolloffMode;
+            source.dopplerLevel = audioSource.dopplerLevel;
+        }
+
+        AudioCategoryVolume category = audioObject.AddComponent<AudioCategoryVolume>();
+        category.IsMusic = false;
+
+        source.Play();
+
+        float playbackDuration = triggerSound.length / Mathf.Max(0.01f, soundPlaybackSpeed);
+        Destroy(audioObject, playbackDuration + 0.1f);
     }
 
     private IEnumerator SpringRoutine()

@@ -31,17 +31,21 @@ public class SpecialPickup : MonoBehaviour
             return;
         }
 
-        if (SpecialPickupCounter.Instance == null)
+        SpecialPickupCounter counter = SpecialPickupCounter.Instance;
+        if (counter == null)
         {
-            Debug.LogWarning(
-                "No SpecialPickupCounter exists in the scene.",
-                this
+            counter = FindFirstObjectByType<SpecialPickupCounter>(
+                FindObjectsInactive.Include
             );
-            return;
+        }
+
+        if (counter == null)
+        {
+            counter = SpecialPickupCounter.CreateRuntimeFallback();
         }
 
         isCollected = true;
-        SpecialPickupCounter.Instance.AddSpecial(value);
+        counter.AddSpecial(value);
 
         CoinPickupEffect.Spawn(
             pickupEffectPrefab,

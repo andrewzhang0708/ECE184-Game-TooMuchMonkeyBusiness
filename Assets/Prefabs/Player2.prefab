@@ -529,6 +529,8 @@ MonoBehaviour:
   enemyLayer:
     serializedVersion: 2
     m_Bits: 0
+  enemyAttackClip: {fileID: 8300000, guid: a0010a1a0c474473b81729eb770c485f, type: 3}
+  enemyAttackVolume: 1
   invincibilityDuration: 1
   disableControlsWhileInvincible: 1
   playerController: {fileID: 0}
