@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f57bcda46d5484b629b2eba2c1f831e1, type: 3}
+  m_Name: BUNDLE_CREDITS_FADE
+  m_EditorClassIdentifier: 
+  splashScreenEventType: 6
+  id: 0
+  t: 0
+  sprite: {fileID: 0}
+  anchoredPosition: {x: 0, y: 0}
+  sizeDelta: {x: 0, y: 0}
+  anchorMin: {x: 0, y: 0}
+  anchorMax: {x: 0, y: 0}
+  pivot: {x: 0, y: 0}
+  bundleEvents:
+  - {fileID: 11400000, guid: 715f9f8f44375478a807b3845c0e13cc, type: 2}
+  - {fileID: 11400000, guid: 357a91b87a83c41efb4c6ed76b0540e7, type: 2}
+  - {fileID: 11400000, guid: 5d74f8adbba174a739801e80c675521c, type: 2}
+  - {fileID: 11400000, guid: c16e7472f5ce24f618668a0d96592011, type: 2}
+  - {fileID: 11400000, guid: 983e38a67970947eda7fdc1fa9ef616f, type: 2}
+  - {fileID: 11400000, guid: 6c2dbae41502c4c5693c86e2ad99b581, type: 2}

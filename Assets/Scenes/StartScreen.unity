@@ -2118,6 +2118,7 @@ GameObject:
   - component: {fileID: 414699357}
   - component: {fileID: 414699359}
   - component: {fileID: 414699358}
+  - component: {fileID: 414699360}
   m_Layer: 5
   m_Name: Star (1)
   m_TagString: Untagged
@@ -2166,7 +2167,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: ffd36d917a510874792a9a492809adc2, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 4fc457273ec0c284e93c3e76437630e2, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2184,6 +2185,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 414699356}
   m_CullTransparentMesh: 1
+--- !u!114 &414699360
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 414699356}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 085be0f427a03a24193133903080365e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CoinCounter
+  coinText: {fileID: 1684538145}
+  label: 
+  startScreenSceneName: StartScreen
 --- !u!1001 &417088410
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6007,6 +6023,7 @@ GameObject:
   - component: {fileID: 1341336001}
   - component: {fileID: 1341336003}
   - component: {fileID: 1341336002}
+  - component: {fileID: 1341336004}
   m_Layer: 5
   m_Name: Star
   m_TagString: Untagged
@@ -6073,6 +6090,20 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1341336000}
   m_CullTransparentMesh: 1
+--- !u!114 &1341336004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1341336000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d3a63308685ab9488d6b9aa4e9fee3b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StarCounter
+  starText: {fileID: 1510246825}
+  label: 
 --- !u!1 &1380267482
 GameObject:
   m_ObjectHideFlags: 0

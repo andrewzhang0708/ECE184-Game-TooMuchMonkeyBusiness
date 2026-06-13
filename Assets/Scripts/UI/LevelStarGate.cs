@@ -28,6 +28,8 @@ public class LevelStarGate : MonoBehaviour
             levelButton = GetComponentInChildren<Button>(true);
         }
 
+        DisableLockedCloudRaycasts();
+
         if (
             hideCloudWithoutAnimator &&
             lockedCloud != null &&
@@ -43,6 +45,20 @@ public class LevelStarGate : MonoBehaviour
         }
 
         Refresh();
+    }
+
+    private void DisableLockedCloudRaycasts()
+    {
+        if (lockedCloud == null)
+        {
+            return;
+        }
+
+        Graphic[] graphics = lockedCloud.GetComponentsInChildren<Graphic>(true);
+        for (int i = 0; i < graphics.Length; i++)
+        {
+            graphics[i].raycastTarget = false;
+        }
     }
 
     private void OnEnable()

@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f57bcda46d5484b629b2eba2c1f831e1, type: 3}
+  m_Name: Splash_3Light_GGL
+  m_EditorClassIdentifier: 
+  splashScreenEventType: 3
+  id: 1
+  t: 0
+  sprite: {fileID: 21300000, guid: 805a41d4c1aab7e44a6294eb66d5ddf1, type: 3}
+  anchoredPosition: {x: 0, y: 0}
+  sizeDelta: {x: 1920, y: 1080}
+  anchorMin: {x: 0.5, y: 0.5}
+  anchorMax: {x: 0.5, y: 0.5}
+  pivot: {x: 0.5, y: 0.5}
+  bundleEvents: []
