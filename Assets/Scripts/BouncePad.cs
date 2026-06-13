@@ -55,6 +55,13 @@ public class BouncePad : MonoBehaviour
         velocity.y = bounceVelocity;
         playerRb.linearVelocity = velocity;
 
+        PlayerController2D playerController =
+            playerRb.GetComponent<PlayerController2D>();
+        if (playerController != null)
+        {
+            playerController.NotifyExternalLaunch();
+        }
+
         lastBounceTime = Time.time;
 
         if (animator != null)

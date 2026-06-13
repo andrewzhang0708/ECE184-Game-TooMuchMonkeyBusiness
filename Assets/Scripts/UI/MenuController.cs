@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class MenuController : MonoBehaviour
 {
@@ -14,6 +15,11 @@ public class MenuController : MonoBehaviour
     public GameObject introPanel;
     public GameObject winPanel;
 
+    [Header("Audio Settings")]
+    [SerializeField] private Slider overallVolumeSlider;
+    [SerializeField] private Slider musicVolumeSlider;
+    [SerializeField] private Slider sfxVolumeSlider;
+
     [Header("Scenes")]
     // public string levelSelectSceneName = "LevelSelect";
     public string Scene1Name = "Level1";
@@ -25,6 +31,8 @@ public class MenuController : MonoBehaviour
 
     private void Start()
     {
+        SetupAudioSliders();
+
         if (openWinPanelOnStart)
         {
             openWinPanelOnStart = false;
@@ -40,6 +48,53 @@ public class MenuController : MonoBehaviour
         }
 
         BackToMainMenu();
+    }
+
+    private void OnDestroy()
+    {
+        overallVolumeSlider?.onValueChanged.RemoveListener(SetOverallVolume);
+        musicVolumeSlider?.onValueChanged.RemoveListener(SetMusicVolume);
+        sfxVolumeSlider?.onValueChanged.RemoveListener(SetSfxVolume);
+    }
+
+    private void SetupAudioSliders()
+    {
+        SetupSlider(overallVolumeSlider, GameAudioSettings.OverallVolume, SetOverallVolume);
+        SetupSlider(musicVolumeSlider, GameAudioSettings.MusicVolume, SetMusicVolume);
+        SetupSlider(sfxVolumeSlider, GameAudioSettings.SfxVolume, SetSfxVolume);
+    }
+
+    private static void SetupSlider(
+        Slider slider,
+        float value,
+        UnityEngine.Events.UnityAction<float> listener
+    )
+    {
+        if (slider == null)
+        {
+            return;
+        }
+
+        slider.minValue = 0f;
+        slider.maxValue = 1f;
+        slider.wholeNumbers = false;
+        slider.SetValueWithoutNotify(value);
+        slider.onValueChanged.AddListener(listener);
+    }
+
+    public void SetOverallVolume(float volume)
+    {
+        GameAudioSettings.SetOverallVolume(volume);
+    }
+
+    public void SetMusicVolume(float volume)
+    {
+        GameAudioSettings.SetMusicVolume(volume);
+    }
+
+    public void SetSfxVolume(float volume)
+    {
+        GameAudioSettings.SetSfxVolume(volume);
     }
 
     public static void OpenLevelPanelOnNextStart()
@@ -106,7 +161,7 @@ public class MenuController : MonoBehaviour
 
     public void OpenSettings()
     {
-        mainMenuPanel.SetActive(false);
+        mainMenuPanel.SetActive(true);
         settingsPanel.SetActive(true);
         creditPanel.SetActive(false);
         levelPanel.SetActive(false);

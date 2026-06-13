@@ -16,6 +16,11 @@ public class EnemyStompStun : MonoBehaviour
     [Header("Stun")]
     [SerializeField] private float stunDuration = 3f;
     [SerializeField] private ParticleSystem stunParticleEffect;
+    [Tooltip("Extra height above the enemy bounds for the automatically generated star effect.")]
+    [SerializeField] private float stunEffectHeightOffset = 0.35f;
+    [Tooltip("Additional local XYZ offset for the automatically generated star effect.")]
+    [SerializeField] private Vector3 stunEffectPositionOffset;
+    [SerializeField, Min(0.01f)] private float stunEffectSize = 1f;
     [SerializeField] private AudioSource stunAudioSource;
     [SerializeField] private AudioClip stunSoundEffect;
     [SerializeField, Range(0f, 3f)] private float stunVolume = 1f;
@@ -47,6 +52,19 @@ public class EnemyStompStun : MonoBehaviour
         {
             stunAudioSource = GetComponent<AudioSource>();
         }
+
+        if (stunParticleEffect == null)
+        {
+            stunParticleEffect = StunStarParticleFactory.Create(
+                transform,
+                GetAutomaticStunEffectPosition() + stunEffectPositionOffset,
+                stunEffectSize
+            );
+        }
+        else
+        {
+            StunStarParticleFactory.ApplyStarRenderer(stunParticleEffect);
+        }
     }
 
     public void Stomp()
@@ -69,7 +87,10 @@ public class EnemyStompStun : MonoBehaviour
 
         if (stunParticleEffect != null)
         {
-            stunParticleEffect.Stop();
+            stunParticleEffect.Stop(
+                true,
+                ParticleSystemStopBehavior.StopEmittingAndClear
+            );
         }
 
         isStunned = false;
@@ -87,6 +108,10 @@ public class EnemyStompStun : MonoBehaviour
 
         if (stunParticleEffect != null)
         {
+            stunParticleEffect.Stop(
+                true,
+                ParticleSystemStopBehavior.StopEmittingAndClear
+            );
             stunParticleEffect.Play();
         }
 
@@ -111,7 +136,10 @@ public class EnemyStompStun : MonoBehaviour
 
         if (stunParticleEffect != null)
         {
-            stunParticleEffect.Stop();
+            stunParticleEffect.Stop(
+                true,
+                ParticleSystemStopBehavior.StopEmittingAndClear
+            );
         }
 
         SetScriptsEnabled(true);
@@ -288,6 +316,21 @@ public class EnemyStompStun : MonoBehaviour
         return hasBounds;
     }
 
+    private Vector3 GetAutomaticStunEffectPosition()
+    {
+        if (!TryGetColliderBounds(out Bounds bounds))
+        {
+            return Vector3.up * (1f + stunEffectHeightOffset);
+        }
+
+        Vector3 worldPosition = new Vector3(
+            bounds.center.x,
+            bounds.max.y + stunEffectHeightOffset,
+            bounds.center.z
+        );
+        return transform.InverseTransformPoint(worldPosition);
+    }
+
     private bool IsOwnCollider(Collider targetCollider)
     {
         if (colliders == null)
@@ -381,6 +424,11 @@ public class EnemyStompStun : MonoBehaviour
             return;
         }
 
-        AudioSource.PlayClipAtPoint(stunSoundEffect, transform.position, stunVolume);
+        AudioGainFilter.PlayClipAtPoint(
+            stunSoundEffect,
+            transform.position,
+            stunVolume,
+            1f
+        );
     }
 }

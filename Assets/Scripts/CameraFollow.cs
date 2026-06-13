@@ -69,36 +69,64 @@ public class CameraFollow : MonoBehaviour
 
     private void SetInitialBoundsFromPlayerPosition()
     {
+        if (initialBoundary1 != null || initialBoundary2 != null)
+        {
+            SetAreaBounds(initialBoundary1, initialBoundary2);
+            return;
+        }
+
         if (target == null)
         {
             SetAreaBounds(initialBoundary1, initialBoundary2);
             return;
         }
 
-        Transform nearestLowerExit = null;
-        Transform nearestUpperExit = null;
+        Transform nearestLeftExit = null;
+        Transform nearestRightExit = null;
+        float nearestLeftDistance = float.PositiveInfinity;
+        float nearestRightDistance = float.PositiveInfinity;
+        float nearestZDistance = float.PositiveInfinity;
+        float playerX = target.position.x;
         float playerZ = target.position.z;
-        float nearestLowerDistance = float.PositiveInfinity;
-        float nearestUpperDistance = float.PositiveInfinity;
+        AreaTransitionTrigger[] exits = FindObjectsByType<AreaTransitionTrigger>(
+            FindObjectsInactive.Exclude,
+            FindObjectsSortMode.None
+        );
 
-        foreach (GameObject exit in GameObject.FindGameObjectsWithTag("Exit"))
+        foreach (AreaTransitionTrigger exit in exits)
         {
-            float zDifference = exit.transform.position.z - playerZ;
-
-            if (zDifference < 0f && -zDifference < nearestLowerDistance)
+            float zDistance = Mathf.Abs(exit.transform.position.z - playerZ);
+            if (zDistance < nearestZDistance)
             {
-                nearestLowerDistance = -zDifference;
-                nearestLowerExit = exit.transform;
-            }
-            else if (zDifference > 0f && zDifference < nearestUpperDistance)
-            {
-                nearestUpperDistance = zDifference;
-                nearestUpperExit = exit.transform;
+                nearestZDistance = zDistance;
             }
         }
 
-        initialBoundary1 = nearestUpperExit;
-        initialBoundary2 = nearestLowerExit;
+        const float sameAreaZTolerance = 1f;
+        foreach (AreaTransitionTrigger exit in exits)
+        {
+            Transform exitTransform = exit.transform;
+            float zDistance = Mathf.Abs(exitTransform.position.z - playerZ);
+            if (zDistance > nearestZDistance + sameAreaZTolerance)
+            {
+                continue;
+            }
+
+            float xDifference = exitTransform.position.x - playerX;
+            if (xDifference <= 0f && -xDifference < nearestLeftDistance)
+            {
+                nearestLeftDistance = -xDifference;
+                nearestLeftExit = exitTransform;
+            }
+            else if (xDifference > 0f && xDifference < nearestRightDistance)
+            {
+                nearestRightDistance = xDifference;
+                nearestRightExit = exitTransform;
+            }
+        }
+
+        initialBoundary1 = nearestLeftExit;
+        initialBoundary2 = nearestRightExit;
         SetAreaBounds(initialBoundary1, initialBoundary2);
     }
 

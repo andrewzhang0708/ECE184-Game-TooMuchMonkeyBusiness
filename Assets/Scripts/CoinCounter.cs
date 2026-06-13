@@ -39,7 +39,13 @@ public class CoinCounter : MonoBehaviour
 
     private void OnEnable()
     {
+        CoinProgress.CoinsChanged += HandleCoinsChanged;
         UpdateHud();
+    }
+
+    private void OnDisable()
+    {
+        CoinProgress.CoinsChanged -= HandleCoinsChanged;
     }
 
     private void OnDestroy()
@@ -62,5 +68,10 @@ public class CoinCounter : MonoBehaviour
         {
             coinText.text = label + CoinCount;
         }
+    }
+
+    private void HandleCoinsChanged(int totalCoins)
+    {
+        UpdateHud();
     }
 }

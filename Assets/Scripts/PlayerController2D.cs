@@ -10,7 +10,11 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] private float moveSpeed = 7f;
     [SerializeField] private float airAcceleration = 18f;
     [SerializeField] private float airDeceleration = 10f;
+
+    [Header("Jump")]
     [SerializeField] private float jumpForce = 8f;
+    [Tooltip("Force used by the single additional jump while airborne.")]
+    [SerializeField] private float doubleJumpForce = 8f;
     [Tooltip("Multiplier applied to upward velocity when the jump key is released early.")]
     [SerializeField, Range(0f, 1f)] private float jumpCutMultiplier = 0.45f;
     [Tooltip("Time used to smoothly reduce upward velocity after releasing the jump key.")]
@@ -69,6 +73,20 @@ public class PlayerController2D : MonoBehaviour
     [SerializeField] private AudioSource audioSource;
     [SerializeField, Range(0f, 3f)] private float jumpVolume = 1f;
 
+    [Header("Movement Audio")]
+    [Tooltip("Use a dedicated AudioSource so stopping footsteps does not interrupt jump audio.")]
+    [SerializeField] private AudioSource walkingAudioSource;
+    [SerializeField] private AudioClip walkingClip;
+    [Tooltip("Values above 1 use additional gain and may cause distortion.")]
+    [SerializeField, Range(0f, 10f)] private float walkingVolume = 1f;
+    [SerializeField, Range(0.1f, 3f)] private float walkingPlaybackSpeed = 1f;
+    [Tooltip("Use a dedicated AudioSource so stopping the slide does not interrupt other audio.")]
+    [SerializeField] private AudioSource rollingAudioSource;
+    [SerializeField] private AudioClip rollingClip;
+    [Tooltip("Values above 1 use additional gain and may cause distortion.")]
+    [SerializeField, Range(0f, 10f)] private float rollingVolume = 1f;
+    [SerializeField, Range(0.1f, 3f)] private float rollingPlaybackSpeed = 1f;
+
     private Rigidbody rb;
     private Collider[] ownColliders;
     private readonly Collider[] groundHits = new Collider[8];
@@ -79,6 +97,7 @@ public class PlayerController2D : MonoBehaviour
     private bool isGrounded;
     private bool isRolling;
     private bool externalMotionActive;
+    private bool airJumpAvailable = true;
     private bool isCuttingJumpShort;
     private float jumpCutElapsed;
     private float jumpCutStartVelocity;
@@ -115,6 +134,7 @@ public class PlayerController2D : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         ownColliders = GetComponentsInChildren<Collider>();
+        EnsureDedicatedMovementAudioSources();
 
         rb.interpolation = RigidbodyInterpolation.Interpolate;
 
@@ -139,6 +159,53 @@ public class PlayerController2D : MonoBehaviour
         UpdateHandBananaVisibility();
     }
 
+    private void EnsureDedicatedMovementAudioSources()
+    {
+        if (walkingAudioSource != null && walkingAudioSource == audioSource)
+        {
+            walkingAudioSource = CreateMovementAudioSource(
+                walkingAudioSource,
+                "Walking Audio Source"
+            );
+        }
+
+        if (
+            rollingAudioSource != null &&
+            (rollingAudioSource == audioSource || rollingAudioSource == walkingAudioSource)
+        )
+        {
+            rollingAudioSource = CreateMovementAudioSource(
+                rollingAudioSource,
+                "Rolling Audio Source"
+            );
+        }
+    }
+
+    private AudioSource CreateMovementAudioSource(AudioSource template, string sourceName)
+    {
+        GameObject sourceObject = new GameObject(sourceName);
+        sourceObject.transform.SetParent(transform, false);
+
+        AudioSource source = sourceObject.AddComponent<AudioSource>();
+        source.playOnAwake = false;
+        source.outputAudioMixerGroup = template.outputAudioMixerGroup;
+        source.mute = template.mute;
+        source.bypassEffects = template.bypassEffects;
+        source.bypassListenerEffects = template.bypassListenerEffects;
+        source.bypassReverbZones = template.bypassReverbZones;
+        source.priority = template.priority;
+        source.panStereo = template.panStereo;
+        source.spatialBlend = template.spatialBlend;
+        source.reverbZoneMix = template.reverbZoneMix;
+        source.dopplerLevel = template.dopplerLevel;
+        source.spread = template.spread;
+        source.minDistance = template.minDistance;
+        source.maxDistance = template.maxDistance;
+        source.rolloffMode = template.rolloffMode;
+
+        return source;
+    }
+
     private void LateUpdate()
     {
         UpdateVisualTurn();
@@ -150,12 +217,14 @@ public class PlayerController2D : MonoBehaviour
 
         if (keyboard == null)
         {
+            StopMovementAudio();
             return;
         }
 
         if (externalMotionActive)
         {
             UpdateAnimator();
+            UpdateMovementAudio(keyboard);
             return;
         }
 
@@ -165,6 +234,7 @@ public class PlayerController2D : MonoBehaviour
         }
 
         CheckGround();
+        RefreshAirJumpAvailability();
 
         bool jumpPressed =
             keyboard.wKey.wasPressedThisFrame ||
@@ -177,6 +247,7 @@ public class PlayerController2D : MonoBehaviour
             keyboard.upArrowKey.isPressed;
         bool rollPressed = keyboard.sKey.wasPressedThisFrame || keyboard.downArrowKey.wasPressedThisFrame;
         float horizontalInput = GetHorizontalInput(keyboard);
+        bool hasGroundContactForJump = isGrounded && HasRecentGroundContact();
 
         if (jumpReleased && !jumpHeld)
         {
@@ -187,16 +258,22 @@ public class PlayerController2D : MonoBehaviour
         {
             TryStartRolling(horizontalInput);
         }
-        else if (jumpPressed && isGrounded && !isRolling)
+        else if (jumpPressed && hasGroundContactForJump && !isRolling)
         {
-            Jump();
+            Jump(jumpForce, false);
         }
-        else if (jumpPressed && !isGrounded)
+        else if (
+            jumpPressed &&
+            !hasGroundContactForJump &&
+            airJumpAvailable &&
+            PowerUpProgress.HasDoubleJump
+        )
         {
-            // Debug.Log("Jump pressed but not grounded. isGrounded=" + isGrounded);
+            Jump(doubleJumpForce, true);
         }
 
         UpdateAnimator();
+        UpdateMovementAudio(keyboard);
     }
 
     private void FixedUpdate()
@@ -207,6 +284,7 @@ public class PlayerController2D : MonoBehaviour
         }
 
         CheckGround();
+        RefreshAirJumpAvailability();
 
         if (isRolling)
         {
@@ -576,8 +654,18 @@ public class PlayerController2D : MonoBehaviour
         }
     }
 
-    private void Jump()
+    private void Jump(float configuredJumpForce, bool consumeAirJump)
     {
+        if (consumeAirJump)
+        {
+            airJumpAvailable = false;
+
+            if (isRolling)
+            {
+                StopRolling(false);
+            }
+        }
+
         rb.useGravity = true;
         isGrounded = false;
         isCuttingJumpShort = false;
@@ -588,13 +676,13 @@ public class PlayerController2D : MonoBehaviour
         velocity.y = 0f;
         rb.linearVelocity = velocity;
 
-        float effectiveJumpForce = jumpForce;
+        float effectiveJumpForce = configuredJumpForce;
 
         // If we're applying stronger gravity during ascent as well, scale the
         // jump impulse so the apex height remains approximately the same.
         if (applyGravityWhileAscending && fallMultiplier > 0f)
         {
-            effectiveJumpForce = jumpForce * Mathf.Sqrt(fallMultiplier);
+            effectiveJumpForce = configuredJumpForce * Mathf.Sqrt(fallMultiplier);
         }
 
         rb.AddForce(Vector3.up * effectiveJumpForce, ForceMode.Impulse);
@@ -602,6 +690,18 @@ public class PlayerController2D : MonoBehaviour
         // Debug.Log("Playing Sound");
 
         UpdateAnimator();
+    }
+
+    private void RefreshAirJumpAvailability()
+    {
+        if (
+            isGrounded &&
+            HasRecentGroundContact() &&
+            rb.linearVelocity.y <= 0.1f
+        )
+        {
+            airJumpAvailable = true;
+        }
     }
 
     private void CutJumpShort()
@@ -661,6 +761,98 @@ public class PlayerController2D : MonoBehaviour
         {
             audioSource.PlayOneShot(jumpClip, jumpVolume);
         }
+    }
+
+    private void UpdateMovementAudio(Keyboard keyboard)
+    {
+        bool isWalking =
+            !externalMotionActive &&
+            !isRolling &&
+            isGrounded &&
+            HasRecentGroundContact() &&
+            !Mathf.Approximately(GetHorizontalInput(keyboard), 0f) &&
+            Mathf.Abs(rb.linearVelocity.x) > 0.05f;
+
+        bool isSliding = !externalMotionActive && isRolling;
+
+        SetLoopingSound(
+            walkingAudioSource,
+            walkingClip,
+            walkingVolume,
+            walkingPlaybackSpeed,
+            isWalking
+        );
+        SetLoopingSound(
+            rollingAudioSource,
+            rollingClip,
+            rollingVolume,
+            rollingPlaybackSpeed,
+            isSliding
+        );
+    }
+
+    private static void SetLoopingSound(
+        AudioSource source,
+        AudioClip clip,
+        float volume,
+        float playbackSpeed,
+        bool shouldPlay
+    )
+    {
+        if (source == null)
+        {
+            return;
+        }
+
+        if (!shouldPlay || clip == null)
+        {
+            if (source.isPlaying)
+            {
+                source.Stop();
+            }
+
+            return;
+        }
+
+        source.loop = true;
+        source.volume = Mathf.Min(volume, 1f);
+        source.pitch = playbackSpeed;
+
+        AudioGainFilter gainFilter = source.GetComponent<AudioGainFilter>();
+        if (gainFilter == null)
+        {
+            gainFilter = source.gameObject.AddComponent<AudioGainFilter>();
+        }
+
+        gainFilter.Gain = Mathf.Max(1f, volume);
+
+        if (source.clip != clip)
+        {
+            source.clip = clip;
+        }
+
+        if (!source.isPlaying)
+        {
+            source.Play();
+        }
+    }
+
+    private void StopMovementAudio()
+    {
+        SetLoopingSound(
+            walkingAudioSource,
+            walkingClip,
+            walkingVolume,
+            walkingPlaybackSpeed,
+            false
+        );
+        SetLoopingSound(
+            rollingAudioSource,
+            rollingClip,
+            rollingVolume,
+            rollingPlaybackSpeed,
+            false
+        );
     }
 
     private void UpdateAnimator()
@@ -761,8 +953,20 @@ public class PlayerController2D : MonoBehaviour
         }
     }
 
+    public void NotifyExternalLaunch()
+    {
+        airJumpAvailable = true;
+        isGrounded = false;
+        isCuttingJumpShort = false;
+        lastGroundedTime = float.NegativeInfinity;
+        lastGroundContactTime = float.NegativeInfinity;
+        ignoreGroundUntil = Time.time + jumpGroundIgnoreDuration;
+    }
+
     private void OnDisable()
     {
+        StopMovementAudio();
+
         if (rb != null)
         {
             rb.useGravity = true;

@@ -21,6 +21,7 @@ public class SpringBoard : MonoBehaviour
     [Header("Sound")]
     [SerializeField] private AudioSource audioSource;
     [SerializeField] private AudioClip triggerSound;
+    [SerializeField, Range(0.1f, 3f)] private float soundPlaybackSpeed = 3f;
 
     private Vector3 platformStartPosition;
     private Vector3 platformUpPosition;
@@ -70,6 +71,7 @@ public class SpringBoard : MonoBehaviour
     {
         if (audioSource != null && triggerSound != null)
         {
+            audioSource.pitch = soundPlaybackSpeed;
             audioSource.PlayOneShot(triggerSound);
         }
     }
@@ -114,5 +116,12 @@ public class SpringBoard : MonoBehaviour
             Vector3.up * bounceForce,
             ForceMode.VelocityChange
         );
+
+        PlayerController2D playerController =
+            playerRigidbody.GetComponent<PlayerController2D>();
+        if (playerController != null)
+        {
+            playerController.NotifyExternalLaunch();
+        }
     }
 }

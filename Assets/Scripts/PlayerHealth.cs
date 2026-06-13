@@ -437,6 +437,7 @@ public class PlayerHealth : MonoBehaviour
         velocity.y = stompBounceVelocity;
         velocity.z = 0f;
         rb.linearVelocity = velocity;
+        playerController.NotifyExternalLaunch();
     }
 
     private void ApplyKnockback(Vector3 damageSourcePosition)
@@ -453,6 +454,7 @@ public class PlayerHealth : MonoBehaviour
         velocity.y = knockbackUpForce;
         velocity.z = 0f;
         rb.linearVelocity = velocity;
+        playerController.NotifyExternalLaunch();
     }
 
     private void UpdateKnockbackHorizontalDecay()

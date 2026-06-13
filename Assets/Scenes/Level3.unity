@@ -39252,7 +39252,7 @@ MonoBehaviour:
   cageTop: {fileID: 512654347}
   topPivot: {fileID: 1080964140}
   topOpenAxis: {x: 0, y: 0, z: 1}
-  topOpenAngle: 190
+  topOpenAngle: 180
   topOpenDuration: 1
   sinkDirection: {x: 0, y: -1, z: 0}
   sinkDistance: 12.4

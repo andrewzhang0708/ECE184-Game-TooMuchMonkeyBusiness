@@ -50,8 +50,7 @@ public class Cage : MonoBehaviour
     [SerializeField, Min(0)] private int starReward = 1;
 
     private Quaternion topClosedRotation;
-    private Quaternion topClosedWorldRotation;
-    private Vector3 topClosedPosition;
+    private Quaternion topPivotClosedRotation;
     private Vector3 cageStartPosition;
     private bool hasTriggered;
     private float previousTimeScale = 1f;
@@ -76,8 +75,11 @@ public class Cage : MonoBehaviour
         if (cageTop != null)
         {
             topClosedRotation = cageTop.localRotation;
-            topClosedWorldRotation = cageTop.rotation;
-            topClosedPosition = cageTop.position;
+        }
+
+        if (topPivot != null)
+        {
+            topPivotClosedRotation = topPivot.localRotation;
         }
 
         cageStartPosition = cageRoot.position;
@@ -107,6 +109,7 @@ public class Cage : MonoBehaviour
         }
 
         hasTriggered = true;
+        PlaySinkSound();
         StartCoroutine(OpenCageRoutine());
     }
 
@@ -192,8 +195,6 @@ public class Cage : MonoBehaviour
         yield return OpenTop();
         AwardStar();
 
-        PlaySinkSound();
-
         Coroutine shakeRoutine = null;
         if (targetCamera != null && cameraShakeDuration > 0f && cameraShakeStrength > 0f)
         {
@@ -240,18 +241,18 @@ public class Cage : MonoBehaviour
 
     private IEnumerator OpenTop()
     {
-        if (cageTop == null)
+        Transform target = topPivot != null ? topPivot : cageTop;
+        if (target == null)
         {
             yield break;
         }
 
         Vector3 axis = topOpenAxis.sqrMagnitude > 0f ? topOpenAxis.normalized : Vector3.right;
-        Vector3 pivotPosition = topPivot != null ? topPivot.position : cageTop.position;
-        Quaternion openRotation = topClosedRotation * Quaternion.AngleAxis(topOpenAngle, axis);
-        Quaternion openWorldRotation = Quaternion.AngleAxis(topOpenAngle, axis) * topClosedWorldRotation;
-        Vector3 openPosition =
-            pivotPosition +
-            Quaternion.AngleAxis(topOpenAngle, axis) * (topClosedPosition - pivotPosition);
+        Quaternion closedRotation = topPivot != null
+            ? topPivotClosedRotation
+            : topClosedRotation;
+        Quaternion openRotation =
+            closedRotation * Quaternion.AngleAxis(topOpenAngle, axis);
         float elapsed = 0f;
         float safeDuration = Mathf.Max(0.01f, topOpenDuration);
 
@@ -259,29 +260,12 @@ public class Cage : MonoBehaviour
         {
             elapsed += Time.unscaledDeltaTime;
             float t = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / safeDuration));
-
-            if (topPivot != null)
-            {
-                cageTop.position = Vector3.Lerp(topClosedPosition, openPosition, t);
-                cageTop.rotation = Quaternion.Slerp(topClosedWorldRotation, openWorldRotation, t);
-            }
-            else
-            {
-                cageTop.localRotation = Quaternion.Slerp(topClosedRotation, openRotation, t);
-            }
+            target.localRotation = Quaternion.Slerp(closedRotation, openRotation, t);
 
             yield return null;
         }
 
-        if (topPivot != null)
-        {
-            cageTop.position = openPosition;
-            cageTop.rotation = openWorldRotation;
-        }
-        else
-        {
-            cageTop.localRotation = openRotation;
-        }
+        target.localRotation = openRotation;
     }
 
     private IEnumerator SinkCage()

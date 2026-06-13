@@ -180,14 +180,14 @@ public class BananaShooter : MonoBehaviour
         }
 
         Vector3 soundPosition = firePoint != null ? firePoint.position : transform.position;
-        AudioSource.PlayClipAtPoint(shootClip, soundPosition, shootVolume);
+        AudioGainFilter.PlayClipAtPoint(shootClip, soundPosition, shootVolume, 1f);
     }
 
     public void PlayEnemyHitFeedback(Vector3 hitPosition)
     {
         if (enemyHitClip != null)
         {
-            AudioSource.PlayClipAtPoint(enemyHitClip, hitPosition, enemyHitVolume);
+            AudioGainFilter.PlayClipAtPoint(enemyHitClip, hitPosition, enemyHitVolume, 1f);
         }
     }
 
@@ -406,7 +406,12 @@ public class BananaProjectileHitDestroy : MonoBehaviour
     {
         if (enemyHitClip != null)
         {
-            AudioSource.PlayClipAtPoint(enemyHitClip, transform.position, enemyHitVolume);
+            AudioGainFilter.PlayClipAtPoint(
+                enemyHitClip,
+                transform.position,
+                enemyHitVolume,
+                1f
+            );
         }
     }
 }

@@ -13,7 +13,8 @@ public class CoinPickup : MonoBehaviour
 
     [Header("Pickup Audio")]
     [SerializeField] private AudioClip pickupClip;
-    [SerializeField, Range(0f, 3f)] private float pickupVolume = 1f;
+    [Tooltip("Values above 1 use additional gain and may cause distortion.")]
+    [SerializeField, Range(0f, 10f)] private float pickupVolume = 1f;
 
     private bool isCollected;
 
@@ -50,7 +51,7 @@ public class CoinPickup : MonoBehaviour
 
         if (pickupClip != null)
         {
-            AudioSource.PlayClipAtPoint(pickupClip, transform.position, pickupVolume);
+            AudioGainFilter.PlayClipAtPoint(pickupClip, transform.position, pickupVolume);
         }
 
         if (visual != null)

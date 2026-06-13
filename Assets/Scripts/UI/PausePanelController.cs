@@ -12,6 +12,11 @@ public class PausePanelController : MonoBehaviour
     [SerializeField] private Button backToMapButton;
     [SerializeField] private Toggle cheatModeToggle;
 
+    [Header("Audio Settings")]
+    [SerializeField] private Slider overallVolumeSlider;
+    [SerializeField] private Slider musicVolumeSlider;
+    [SerializeField] private Slider sfxVolumeSlider;
+
     [Header("Player")]
     [SerializeField] private PlayerHealth playerHealth;
     [SerializeField] private int cheatModeLives = 1000;
@@ -34,6 +39,7 @@ public class PausePanelController : MonoBehaviour
         resumeButton?.onClick.AddListener(ResumeGame);
         backToMapButton?.onClick.AddListener(BackToMap);
         cheatModeToggle?.onValueChanged.AddListener(SetCheatMode);
+        SetupAudioSliders();
 
         SetPaused(false);
 
@@ -59,6 +65,9 @@ public class PausePanelController : MonoBehaviour
         resumeButton?.onClick.RemoveListener(ResumeGame);
         backToMapButton?.onClick.RemoveListener(BackToMap);
         cheatModeToggle?.onValueChanged.RemoveListener(SetCheatMode);
+        overallVolumeSlider?.onValueChanged.RemoveListener(SetOverallVolume);
+        musicVolumeSlider?.onValueChanged.RemoveListener(SetMusicVolume);
+        sfxVolumeSlider?.onValueChanged.RemoveListener(SetSfxVolume);
 
         if (isPaused)
         {
@@ -105,6 +114,46 @@ public class PausePanelController : MonoBehaviour
         }
     }
 
+    public void SetOverallVolume(float volume)
+    {
+        GameAudioSettings.SetOverallVolume(volume);
+    }
+
+    public void SetMusicVolume(float volume)
+    {
+        GameAudioSettings.SetMusicVolume(volume);
+    }
+
+    public void SetSfxVolume(float volume)
+    {
+        GameAudioSettings.SetSfxVolume(volume);
+    }
+
+    private void SetupAudioSliders()
+    {
+        SetupSlider(overallVolumeSlider, GameAudioSettings.OverallVolume, SetOverallVolume);
+        SetupSlider(musicVolumeSlider, GameAudioSettings.MusicVolume, SetMusicVolume);
+        SetupSlider(sfxVolumeSlider, GameAudioSettings.SfxVolume, SetSfxVolume);
+    }
+
+    private static void SetupSlider(
+        Slider slider,
+        float value,
+        UnityEngine.Events.UnityAction<float> listener
+    )
+    {
+        if (slider == null)
+        {
+            return;
+        }
+
+        slider.minValue = 0f;
+        slider.maxValue = 1f;
+        slider.wholeNumbers = false;
+        slider.SetValueWithoutNotify(value);
+        slider.onValueChanged.AddListener(listener);
+    }
+
     private void SetPaused(bool paused)
     {
         isPaused = paused;
@@ -113,6 +162,18 @@ public class PausePanelController : MonoBehaviour
         if (pausePanel != null)
         {
             pausePanel.SetActive(paused);
+        }
+
+        SetSliderActive(overallVolumeSlider, paused);
+        SetSliderActive(musicVolumeSlider, paused);
+        SetSliderActive(sfxVolumeSlider, paused);
+    }
+
+    private static void SetSliderActive(Slider slider, bool active)
+    {
+        if (slider != null && slider.gameObject.activeSelf != active)
+        {
+            slider.gameObject.SetActive(active);
         }
     }
 }

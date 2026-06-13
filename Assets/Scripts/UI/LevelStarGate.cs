@@ -79,6 +79,12 @@ public class LevelStarGate : MonoBehaviour
                 lockedCloud.SetActive(true);
             }
 
+            if (cloudAnimator != null)
+            {
+                cloudAnimator.Rebind();
+                cloudAnimator.Update(0f);
+            }
+
             return;
         }
 

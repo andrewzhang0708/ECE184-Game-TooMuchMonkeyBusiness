@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public static class StarProgress
 {
     private const string SavedStarsKey = "TotalStars";
     private const string AchievementKeyPrefix = "StarAchievement.";
+    private const string AchievementRegistryKey = "StarAchievement.Registry";
+    private const char AchievementSeparator = '\n';
 
     public static event Action<int> StarsChanged;
 
@@ -31,9 +34,55 @@ public static class StarProgress
 
         int newTotal = TotalStars + Mathf.Max(0, starReward);
         PlayerPrefs.SetInt(AchievementKeyPrefix + achievementId, 1);
+        RegisterAchievement(achievementId);
         PlayerPrefs.SetInt(SavedStarsKey, newTotal);
         PlayerPrefs.Save();
         StarsChanged?.Invoke(newTotal);
         return true;
+    }
+
+    public static void ResetProgress()
+    {
+        foreach (string achievementId in GetRegisteredAchievements())
+        {
+            PlayerPrefs.DeleteKey(AchievementKeyPrefix + achievementId);
+        }
+
+        // Compatibility with progress saved before the registry was introduced.
+        PlayerPrefs.DeleteKey(AchievementKeyPrefix + "RescueRio");
+        PlayerPrefs.DeleteKey(AchievementRegistryKey);
+        PlayerPrefs.DeleteKey(SavedStarsKey);
+        PlayerPrefs.Save();
+        StarsChanged?.Invoke(0);
+    }
+
+    private static void RegisterAchievement(string achievementId)
+    {
+        HashSet<string> achievements = GetRegisteredAchievements();
+        if (!achievements.Add(achievementId))
+        {
+            return;
+        }
+
+        PlayerPrefs.SetString(
+            AchievementRegistryKey,
+            string.Join(AchievementSeparator.ToString(), achievements)
+        );
+    }
+
+    private static HashSet<string> GetRegisteredAchievements()
+    {
+        HashSet<string> achievements = new HashSet<string>();
+        string registry = PlayerPrefs.GetString(AchievementRegistryKey, string.Empty);
+
+        foreach (string achievementId in registry.Split(AchievementSeparator))
+        {
+            if (!string.IsNullOrWhiteSpace(achievementId))
+            {
+                achievements.Add(achievementId);
+            }
+        }
+
+        return achievements;
     }
 }
